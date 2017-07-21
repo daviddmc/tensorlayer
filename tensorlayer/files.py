@@ -1088,3 +1088,138 @@ def npz_to_W_pdf(path=None, regx='w1pre_[0-9]+\.(npz)'):
         W = load_npz(path, f)[0]
         print("%s --> %s" % (f, f.split('.')[0]+'.pdf'))
         visualize.W(W, second=10, saveable=True, name=f.split('.')[0], fig_idx=2012)
+
+# My File IO
+
+def loadDataFromHDF5(filepath_hdf5, datakeys):
+    
+    def load_single(filepath, datakey):
+        try:
+            with h5py.File(filepath, 'r') as f:
+                data_load = f[datakey][()] 
+                print('loaded from file {0} for key {1}'.format(filepath_hdf5, datakey))                    
+        except:
+            print('cannot load from file {0} for key {1}'.format(filepath_hdf5, datakey))                    
+            return None
+        return data_load
+    
+    if type(datakeys) is list:
+        data = []
+        for datakey in datakeys:
+            data.append(load_single(filepath_hdf5, datakey))
+        return data
+    else:
+        return loadone(filepath_hdf5, datakeys)
+
+
+def saveDataToHDF5(data, filepath_hdf5, datakeys):
+    
+    if type(data) is not list:
+        data = [data]
+    if type(datakeys) is not list:
+        datakeys = [datakeys]
+    
+    try:
+        with h5py.File(filepath_hdf5, 'w') as f:
+            for d, k in zip(data, datakeys):
+                f.create_dataset(k, d)
+                print('saved data to file {0} for key {1}'.format(filepath_hdf5, k))                    
+    except:
+        print('cannot save data to file {0} for key {1}'.format(filepath_hdf5, k))                    
+        return False
+    return True
+
+def loadDataFromMat(filepath_mat, datakeys):
+    
+    
+    try:
+        data_load = sio.loadmat(filepath_mat)
+    except:
+        print('fail to load from file {0}'.format(filepath_mat))
+        
+    if type(datakeys) is not list:
+        datakeys = [datakeys]
+    data = []
+    for datakey in datakeys:
+        try:
+            data.append(data_load[datakey])
+        except:
+            print('no key {0} found, existing keys:{1}'.format(datakey, data_load.keys()))
+    if len(data) > 1:
+        return data
+    else:
+        return data[0]
+
+'''
+def loadDataFromDicom(dir_or_list, key):
+    if type(dir_or_list) is list:
+        filenames = dir_or_list
+    else:
+        filenames = os.listdir(dir_or_list)
+    
+    vals = []
+    for filename in filenames:
+        dicom_data = dicom.read_file(os.path.join(dirName,filename))
+        val = getattr(dicom_data, key)
+        if (type(val) is str) and (val.isdigit()):
+            val = float(val)
+        if key == 'pixel_array' and len(filenames) > 1:
+            val = np.reshape(array, list(array.shape) + [1]) 
+        vals.append(val)
+        
+    if key == 'pixel_array':
+        if len(filenames) > 1:
+            data = np.concatenate(vals, axis = len(vals[0].shape))
+        else:
+            data = vals[0]
+        return data
+    else:
+        return vals
+'''
+
+import re
+
+def LoadDicom(path, rescale = True, dicom_extension = '',
+              filename2key = lambda x: int(re.search(r'\d+', x.split('_sl')[-1]).group())):
+
+    filenames = os.listdir(path)
+    filenames = [x for x in sorted(filenames,key =  filename2key) if x.endswith(dicom_extension)]
+    data = []
+    for filename in filenames:
+        dicom_data = dicom.read_file(os.path.join(path, filename))
+        array = dicom_data.pixel_array.astype(np.float64)
+        if rescale:
+            try:
+                rescale_slope = dicom_data.RescaleSlope
+                rescale_intercept = dicom_data.RescaleIntercept
+                array = rescale_slope * array + rescale_intercept
+            except:
+                print("can not rescale data")
+        data.append(array)
+    return np.asarray(data)
+
+def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_extension = '', 
+              filename2key = lambda x: int(re.search(r'\d+', x.split('_sl')[-1]).group())):
+    
+    data[data < 0] = 0
+    
+    filenames = os.listdir(path)
+    filenames = [x for x in sorted(filenames,key =  filename2key) if x.endswith(dicom_extension)]
+    
+    for filename in filenames:
+        dicom_data = dicom.read_file(os.path.join(path, filename))
+        idx = filename2key(filename) - begin_slice
+        if idx >= 0 and idx < data.shape[0]:
+            slice_data = data[idx]
+            if rescale:
+                rescale_slope = np.max(slice_data) / 32767
+                rescale_intercept = 0
+                slice_data = slice_data / rescale_slope * 32767
+                slice_data = slice_data.astype(np.int16)
+                try:
+                    dicom_data.RescaleSlope = str(rescale_slope)
+                    dicom_data.RescaleIntercept = str(rescale_intercept)
+                except:
+                    print("can not rescale data")
+            dicom_data.PixelData = slice_data.tostring()
+        dicom_data.save_as(os.path.join(path_new, filename))
