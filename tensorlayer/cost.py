@@ -1,15 +1,3 @@
-#! /usr/bin/python
-# -*- coding: utf8 -*-
-
-
-
-import tensorflow as tf
-import numbers
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import standard_ops
-
-## Cost Functions
-
 def cross_entropy(output, target, name=None):
     """It is a softmax cross-entropy operation, returns the TensorFlow expression of cross-entropy of two distributions, implement
     softmax internally. See ``tf.nn.sparse_softmax_cross_entropy_with_logits``.
@@ -76,7 +64,7 @@ def binary_cross_entropy(output, target, epsilon=1e-8, name='bce_loss'):
                               (1. - target) * tf.log(1. - output + epsilon)), axis=1))
 
 
-def mean_squared_error(output, target, is_mean=False):
+def mean_squared_error(output, target, is_mean=False, weight = None):
     """Return the TensorFlow expression of mean-squre-error of two distributions.
 
     Parameters
@@ -90,16 +78,21 @@ def mean_squared_error(output, target, is_mean=False):
     - `Wiki Mean Squared Error <https://en.wikipedia.org/wiki/Mean_squared_error>`_
     """
     with tf.name_scope("mean_squared_error_loss"):
+        
+        squared_diff = tf.squared_difference(output, target)
+        if weight is not None:
+            squared_diff = squared_diff * weight
+        
         if output.get_shape().ndims == 2:   # [batch_size, n_feature]
             if is_mean:
-                mse = tf.reduce_mean(tf.reduce_mean(tf.squared_difference(output, target), 1))
+                mse = tf.reduce_mean(tf.reduce_mean(squared_diff, 1))
             else:
-                mse = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(output, target), 1))
+                mse = tf.reduce_mean(tf.reduce_sum(squared_diff, 1))
         elif output.get_shape().ndims == 4: # [batch_size, w, h, c]
             if is_mean:
-                mse = tf.reduce_mean(tf.reduce_mean(tf.squared_difference(output, target), [1, 2, 3]))
+                mse = tf.reduce_mean(tf.reduce_mean(squared_diff, [1, 2, 3]))
             else:
-                mse = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(output, target), [1, 2, 3]))
+                mse = tf.reduce_mean(tf.reduce_sum(squared_diff, [1, 2, 3]))
         return mse
 
 def normalized_mean_square_error(output, target):
@@ -119,8 +112,6 @@ def normalized_mean_square_error(output, target):
             nmse_b = tf.sqrt(tf.reduce_sum(tf.square(target), axis=[1,2,3]))
         nmse = tf.reduce_mean(nmse_a / nmse_b)
     return nmse
-
-
 
 def dice_coe(output, target, loss_type='jaccard', axis=[1,2,3], smooth=1e-5):
     """Soft dice (Sørensen or Jaccard) coefficient for comparing the similarity
@@ -172,7 +163,6 @@ def dice_coe(output, target, loss_type='jaccard', axis=[1,2,3], smooth=1e-5):
     dice = tf.reduce_mean(dice)
     return dice
 
-
 def dice_hard_coe(output, target, threshold=0.5, axis=[1,2,3], smooth=1e-5):
     """Non-differentiable Sørensen–Dice coefficient for comparing the similarity
     of two batch of data, usually be used for binary image segmentation i.e. labels are binary.
@@ -209,7 +199,6 @@ def dice_hard_coe(output, target, threshold=0.5, axis=[1,2,3], smooth=1e-5):
     ##
     hard_dice = tf.reduce_mean(hard_dice)
     return hard_dice
-
 
 def iou_coe(output, target, threshold=0.5, axis=[1,2,3], smooth=1e-5):
     """Non-differentiable Intersection over Union (IoU) for comparing the
@@ -278,7 +267,6 @@ def iou_coe(output, target, threshold=0.5, axis=[1,2,3], smooth=1e-5):
 # # pprint.pprint(u)
 # exit()
 
-
 def cross_entropy_seq(logits, target_seqs, batch_size=None):#, batch_size=1, num_steps=None):
     """Returns the expression of cross-entropy of two sequences, implement
     softmax internally. Normally be used for Fixed Length RNN outputs.
@@ -313,7 +301,6 @@ def cross_entropy_seq(logits, target_seqs, batch_size=None):#, batch_size=1, num
     if batch_size is not None:
         cost = cost / batch_size
     return cost
-
 
 def cross_entropy_seq_with_mask(logits, target_seqs, input_mask, return_details=False, name=None):
     """Returns the expression of cross-entropy of two sequences, implement
@@ -353,7 +340,6 @@ def cross_entropy_seq_with_mask(logits, target_seqs, input_mask, return_details=
     else:
         return loss
 
-
 def cosine_similarity(v1, v2):
     """Cosine similarity [-1, 1], `wiki <https://en.wikipedia.org/wiki/Cosine_similarity>`_.
 
@@ -371,60 +357,59 @@ def cosine_similarity(v1, v2):
         cost = tf.reduce_sum(tf.mul(v1, v2), reduction_indices=1) / (tf.sqrt(tf.reduce_sum(tf.mul(v1, v1), reduction_indices=1)) * tf.sqrt(tf.reduce_sum(tf.mul(v2, v2), reduction_indices=1)))
     return cost
 
-
 ## Regularization Functions
 def li_regularizer(scale, scope=None):
-  """li regularization removes the neurons of previous layer, `i` represents `inputs`.\n
-  Returns a function that can be used to apply group li regularization to weights.\n
-  The implementation follows `TensorFlow contrib <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/layers/python/layers/regularizers.py>`_.
+    """li regularization removes the neurons of previous layer, `i` represents `inputs`.\n
+    Returns a function that can be used to apply group li regularization to weights.\n
+    The implementation follows `TensorFlow contrib <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/layers/python/layers/regularizers.py>`_.
 
-  Parameters
-  ----------
-  scale : float
-    A scalar multiplier `Tensor`. 0.0 disables the regularizer.
-  scope: An optional scope name for TF12+.
+    Parameters
+    ----------
+    scale : float
+      A scalar multiplier `Tensor`. 0.0 disables the regularizer.
+    scope: An optional scope name for TF12+.
 
-  Returns
-  --------
-  A function with signature `li(weights, name=None)` that apply Li regularization.
+    Returns
+    --------
+    A function with signature `li(weights, name=None)` that apply Li regularization.
 
-  Raises
-  ------
-  ValueError : if scale is outside of the range [0.0, 1.0] or if scale is not a float.
-  """
-  import numbers
-  from tensorflow.python.framework import ops
-  from tensorflow.python.ops import standard_ops
-  # from tensorflow.python.platform import tf_logging as logging
+    Raises
+    ------
+    ValueError : if scale is outside of the range [0.0, 1.0] or if scale is not a float.
+    """
+    import numbers
+    from tensorflow.python.framework import ops
+    from tensorflow.python.ops import standard_ops
+    # from tensorflow.python.platform import tf_logging as logging
 
-  if isinstance(scale, numbers.Integral):
-    raise ValueError('scale cannot be an integer: %s' % scale)
-  if isinstance(scale, numbers.Real):
-    if scale < 0.:
-      raise ValueError('Setting a scale less than 0 on a regularizer: %g' %
+    if isinstance(scale, numbers.Integral):
+        raise ValueError('scale cannot be an integer: %s' % scale)
+    if isinstance(scale, numbers.Real):
+        if scale < 0.:
+            raise ValueError('Setting a scale less than 0 on a regularizer: %g' %
                        scale)
-    if scale >= 1.:
-      raise ValueError('Setting a scale greater than 1 on a regularizer: %g' %
+        if scale >= 1.:
+            raise ValueError('Setting a scale greater than 1 on a regularizer: %g' %
                        scale)
-    if scale == 0.:
-      logging.info('Scale of 0 disables regularizer.')
-      return lambda _, name=None: None
+        if scale == 0.:
+            logging.info('Scale of 0 disables regularizer.')
+            return lambda _, name=None: None
 
-  def li(weights, name=None):
-    """Applies li regularization to weights."""
-    with tf.name_scope('li_regularizer') as scope:
-        my_scale = ops.convert_to_tensor(scale,
+    def li(weights, name=None):
+        """Applies li regularization to weights."""
+        with tf.name_scope('li_regularizer') as scope:
+            my_scale = ops.convert_to_tensor(scale,
                                            dtype=weights.dtype.base_dtype,
                                            name='scale')
-        if tf.__version__ <= '0.12':
-            standard_ops_fn = standard_ops.mul
-        else:
-            standard_ops_fn = standard_ops.multiply
-            return standard_ops_fn(
-              my_scale,
-              standard_ops.reduce_sum(standard_ops.sqrt(standard_ops.reduce_sum(tf.square(weights), 1))),
-              name=scope)
-  return li
+            if tf.__version__ <= '0.12':
+                standard_ops_fn = standard_ops.mul
+            else:
+                standard_ops_fn = standard_ops.multiply
+                return standard_ops_fn(
+                    my_scale,
+                    standard_ops.reduce_sum(standard_ops.sqrt(standard_ops.reduce_sum(tf.square(weights), 1))),
+                    name=scope)
+    return li
 
 
 
@@ -632,5 +617,101 @@ def maxnorm_i_regularizer(scale, scope=None):
 
 
 
+# My Loss Functions
 
-#
+def l1_loss(output, target, is_mean=False, weight = None):
+    """Return the TensorFlow expression of l1 loss (absolute difference) of two distributions.
+
+    Parameters
+    ----------
+    output : 2D or 4D tensor.
+    target : 2D or 4D tensor.
+    is_mean : boolean, if True, use ``tf.reduce_mean`` to compute the loss of one data, otherwise, use ``tf.reduce_sum`` (default)."""
+    
+    abs_diff = tf.abs(output - target)
+    if weight is not None:
+            abs_diff = abs_diff * weight
+    with tf.name_scope("l1_loss"):
+        if output.get_shape().ndims == 2:   # [batch_size, n_feature]
+            if is_mean:
+                l1 = tf.reduce_mean(tf.reduce_mean(abs_diff, 1))
+            else:
+                l1 = tf.reduce_mean(tf.reduce_sum(abs_diff, 1))
+        elif output.get_shape().ndims == 4: # [batch_size, w, h, c]
+            if is_mean:
+                l1 = tf.reduce_mean(tf.reduce_mean(abs_diff, [1, 2, 3]))
+            else:
+                l1 = tf.reduce_mean(tf.reduce_sum(abs_diff, [1, 2, 3]))
+        return l1
+
+def ssim_loss(output, target, inputs = None, is_mean = False, size = 11, sigma = 1.5):
+    """Return the expresson of ssim loss of two image (batch).
+    
+    Parameters
+    ----------
+    output : 4D tensor.
+    target : 4D tensor.
+    size : size of gaussian window (i.e. patch size), int.
+    sigma : std of the gaussian window, float.
+    
+    Here, a gaussian window is used to calculate the weighted mean of each patch."""
+    
+    with tf.name_scope('ssim_loss'):
+    
+        def gaussian_window(size, sigma):
+            '''return a 2D tensor of shape [size, size]'''
+
+            x_data, y_data = np.mgrid[-size//2 + 1:size//2 + 1, -size//2 + 1:size//2 + 1]
+
+            x_data = np.expand_dims(x_data, axis=-1)
+            x_data = np.expand_dims(x_data, axis=-1)
+
+            y_data = np.expand_dims(y_data, axis=-1)
+            y_data = np.expand_dims(y_data, axis=-1)
+
+            x = tf.constant(x_data, dtype=tf.float32)
+            y = tf.constant(y_data, dtype=tf.float32)
+
+            g = tf.exp(-((x**2 + y**2)/(2.0*sigma**2)))
+            return g / tf.reduce_sum(g)
+        
+        if inputs is not None:
+            output = output - inputs
+            target = target - inputs
+            
+        
+        window = gaussian_window(size, sigma)
+        K1 = 0.01
+        K2 = 0.03
+        L = 1  # depth of image (255 in case the image has a differnt scale)
+        C1 = (K1*L)**2
+        C2 = (K2*L)**2
+        mu1 = tf.nn.conv2d(output, window, strides=[1,1,1,1], padding='VALID')
+        mu2 = tf.nn.conv2d(target, window, strides=[1,1,1,1], padding='VALID')
+        mu1_sq = mu1*mu1
+        mu2_sq = mu2*mu2
+        mu1_mu2 = mu1*mu2
+        sigma1_sq = tf.nn.conv2d(output*output, window, strides=[1,1,1,1],padding='VALID') - mu1_sq
+        sigma2_sq = tf.nn.conv2d(target*target, window, strides=[1,1,1,1],padding='VALID') - mu2_sq
+        sigma12 = tf.nn.conv2d(output*target, window, strides=[1,1,1,1],padding='VALID') - mu1_mu2
+        value = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
+        if is_mean:
+            loss = tf.reduce_mean(tf.reduce_mean(1 - value, [1, 2, 3]))
+        else:
+            loss = tf.reduce_mean(tf.reduce_sum(1 - value, [1, 2, 3]))
+    return loss
+
+def ls_adversarial_loss(G_out, D_out_fake, D_out_real):
+    
+    with tf.name_scope('ls_adversarial_loss'):
+        #G loss
+        G_loss = tf.square(D_out_fake - tf.ones_like(D_out_fake))
+        G_loss  = tf.reduce_mean(G_loss, name='G_loss')
+        #D loss
+        D_loss_real = tf.square(D_out_real - tf.ones_like(D_out_real))
+        D_loss_real = tf.reduce_mean(D_loss_real)
+        D_loss_fake = tf.square(D_out_fake)
+        D_loss_fake = tf.reduce_mean(D_loss_fake)
+        D_loss = tf.add(D_loss_fake, D_loss_real, name = 'D_loss')
+        
+    return G_loss, D_loss
