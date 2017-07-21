@@ -7,12 +7,14 @@ import matplotlib
 ## use this, if you got the following error:
 #  _tkinter.TclError: no display name and no $DISPLAY environment variable
 
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 from . import prepro
+from .metrics import getErrorMetrics
 
 
 ## Save images
@@ -386,5 +388,136 @@ def tsne_embedding(embeddings, reverse_dictionary, plot_only=500,
     except ImportError:
         print("Please install sklearn and matplotlib to visualize embeddings.")
 
+        
+## My Visualization
+def plot_with_error_metrics(im_ref, im_preds, mask = None,
+    # display options
+                    figsize = None, plot_row=1, fold_error=5, clim=[0,0.5], colormap = None,
+    # title options
+                    data_label='validation', method_labels=['Raw','NLM-Denoise','Proposed'],
+    # saving options
+                    path_to_save=None):
+    '''plot ground truth, predictions, error maps and error metrics
+    
+    parameters
+    ----------
+    '''
+    
+    method_labels += [''] * (len(im_preds) - len(method_labels))
+    
+    # dim
+    if im_ref.ndim<3:
+        im_ref = im_ref[np.newaxis,:,:]
+    if mask is None:
+        mask = np.ones(shape = im_ref.shape, dtype=np.float64)
+    if mask.ndim<3:
+        mask = mask[np.newaxis,:,:]
+    for i in range(len(im_preds)):
+        if im_preds[i].ndim<3:    
+            im_preds[i]=im_preds[i][np.newaxis,:,:]
+    
+    # apply mask
+    if mask is not None:
+        im_ref *= mask
+        for i in range(len(im_preds)):
+            im_preds[i] *= mask
+    
+    # error
+    diffs = []
+    results = []
+    for i in range(len(im_preds)):
+        im_tmp = im_preds[i]
+        diff_tmp = np.abs(im_tmp[0,:,:]-im_ref[0,:,:])
+        result_tmp = getErrorMetrics(im_tmp,im_ref,mask)
+        diffs.append(diff_tmp)
+        results.append(result_tmp)
+
+    plt.figure(figsize=figsize)
+    
+    im_toshow=[]
+    if plot_row==2:
+        im_toshow.append(np.concatenate([im_ref[0,:,:]]+[x[0,:,:] for x in im_preds],axis=1))
+        im_toshow.append(np.concatenate([mask[0,:,:]]+diffs,axis=1)*fold_error)
+        im_toshow = np.concatenate(im_toshow,axis=0)
+    else:
+        im_toshow=[im_ref[0,:,:], mask[0,:,:]]
+        for i in range(len(im_preds)):
+            im_toshow+=[im_preds[i][0,:,:],diffs[i]*fold_error]
+        im_toshow = np.concatenate(im_toshow, axis=1)
+    title_plot = [', {0}(RMSE{1:.4f},PSNR{2:.2f}dB)'.format(method_labels[i], results[i]['rmse'], results[i]['psnr']) for i in range(len(im_preds))]
+    title_plot = '{0}: Ref'.format(data_label) + ''.join(title_plot)
+    
+    # plot    
+    if colormap is None:
+        plt.imshow(im_toshow,clim=clim)
+    else:
+        plt.imshow(im_toshow,clim=clim,cmap=colormap)
+    plt.title(title_plot)
+    plt.axis('off')
+
+    # save
+    if path_to_save is not None:
+        plt.savefig(path_to_save, bbox_inches='tight')   
+
+COLOR = ['b', 'r', 'g', 'y', 'c', 'm'] 
+   
+def bar(mean, std=None, 
+        xlabel='', ylabel='', title='', labels = None, 
+        ymin=None, ymax=None):
+    """make a bar plot
+    
+    parameters
+    ----------
+    mean : height of the bar
+    std : error of the bar
+    xlabel : label of x axis
+    ylable : label of y axis
+    title : title of the figure
+    labels : label of each group
+    ymin : minimum of y axis
+    ymax : maximum of y axis
+    """
+    
+    if labels is None:
+        labels = [''] * mean.shape[1]
+    assert len(labels) == mean.shape[1]    
+    n_groups = mean.shape[0]  
+    fig, ax = plt.subplots()  
+    index = np.arange(n_groups)  
+    bar_width = 0.15    
+    opacity = 0.4
+    
+    for i in range(len(labels)):
+        plt.bar(index + i*bar_width, mean[:,i], bar_width, 
+                alpha=opacity, color=COLOR[np.mod(i, len(COLOR))],
+                label=labels[i], yerr =std[:,i])  
+    plt.xlabel(xlabel)  
+    plt.ylabel(ylabel)  
+    plt.title(title)  
+    plt.xticks(index + len(labels) * bar_width / 2, range(1,n_groups+1))
+    if ymin is not None and ymax is not None:
+        plt.ylim(ymin,ymax)  
+    plt.legend()  
+    plt.tight_layout()  
+    plt.show() 
+    
+def box(data, xlabel = '', ylabel = '', title = '', labels = None):
+    """Make a box and whisker plot.
+    
+    parameters
+    ----------
+    data : m x n array, n is number of groups and m is number of entries in each group
+    xlabel : label of x axis
+    ylable : label of y axis
+    title : title of the figure
+    labels : label of each group
+    """
+    
+    df = pd.DataFrame(data, columns=labels)
+    df.boxplot(return_type='axes')
+    plt.xlabel(xlabel)
+    plt.ylabel(xlabel)
+    plt.title(title)
+    plt.show()
 
 #
