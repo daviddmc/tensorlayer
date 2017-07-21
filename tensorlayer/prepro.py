@@ -1592,6 +1592,43 @@ def crop_central_whiten_images(images=None, height=24, width=24):
     result = tf.while_loop(cond=c, body=body, loop_vars=(central_x, i), parallel_iterations=16)
     return result
 
+# My code 
+
+def data_augment(images,
+                flip_up_down = True,
+                flip_left_right = True,
+                transpose = True,
+                crop_size = None,
+                crop_num = 1):
+    if flip_up_down:
+        images = tf.map_fn(lambda img: tf.image.random_flip_up_down(img), images)
+    if flip_left_right:
+        images = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), images)
+    if transpose:
+        images = tf.map_fn(lambda img: random_transpose_image(img), images)
+    if crop_size is not None:
+        pass
+    
+    return images
+    
+
+def random_transpose_image(image, seed=None):
+    assert image.get_shape().as_list()[0] == image.get_shape().as_list()[1]
+    uniform_random = tf.random_uniform([], 0, 1.0, seed=seed)
+    mirror_cond = tf.less(uniform_random, .5)
+    result = tf.cond(mirror_cond,
+                     lambda: tf.image.transpose_image(image),
+                     lambda: image)
+    return result
+
+'''
+def random_crop_image(image, crop_size, crop_num, seed=None):
+    images_cropped = []
+    for i in range(crop_num):
+        images_cropped.append(tf.random_crop(image, crop_size + image.get_shape().as_list()[-1:], seed))
+    return tf.stack(images_cropped, axis = 0)
+    
+'''
 
 
 
