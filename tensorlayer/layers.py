@@ -5845,6 +5845,103 @@ class MaxoutLayer(Layer):
         self.all_layers.extend( [self.outputs] )
         self.all_params.extend( [W, b] )
 
+#### My Layers
+
+def setup_tensorflow(gpu_memory_fraction = 0.45, gpu_visible = '0'):
+    """set GPU options and create a tensorflow session."""
+    
+    assert gpu_memory_fraction > 0 and gpu_memory_fraction <= 1
+    gpu_visible = str(gpu_visible)
+    # Set GPU used
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_visible
+    print('use GPU : {0}'.format(gpu_visible))
+    # Create session
+    print('setup_tensorflow')
+    config = tf.ConfigProto(log_device_placement=False)
+    config.gpu_options.per_process_gpu_memory_fraction = gpu_memory_fraction
+    sess = tf.Session(config=config)
+    print('TF session setup for gpu usage cap of {0}'.format(config.gpu_options.per_process_gpu_memory_fraction))
+    return sess
+
+def myDeConv2d(net, n_out_channel = 32, filter_size = (3, 3), strides = (2, 2), batch_size = None, act = None,
+               W_init = tf.truncated_normal_initializer(stddev=0.02), b_init = tf.constant_initializer(value=0.0),
+               W_init_args = {}, b_init_args = {}, name ='decnn2d'):
+    """a wrapper of DeConv2d, when the padding mode is SAME"""
+    
+    tensor = net.outputs
+    out_size = [int(tensor.get_shape()[1]) * strides[0], int(tensor.get_shape()[2]) * strides[1]]
+    return DeConv2d(net, n_out_channel, filter_size,
+        out_size, strides, 'SAME', batch_size, act,
+        W_init, b_init,
+        W_init_args, b_init_args, name)
+
+class CropLayer(Layer):
+    def __init__(
+        self,
+        layer = None,
+        out_size = [1, 1],
+        name ='crop_layer',
+    ):
+        # check layer name (fixed)
+        Layer.__init__(self, name=name)
+
+        # the input of this layer is the output of previous layer (fixed)
+        self.inputs = layer.outputs
+        print("  [TL] CropLayer   %s: out_size:%s" % (self.name, str(out_size)))
+
+        # operation (customized)
+        in_shape = self.inputs.get_shape().as_list()
+        begin = [0, int((in_shape[1] - out_size[0])/2), int((in_shape[2] - out_size[1])/2), 0]
+        size = [-1, out_size[0], out_size[1], -1]
+        self.outputs = tf.slice(self.inputs, begin, size, name)
+
+        # get stuff from previous layer (fixed)
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+
+        # update layer (customized)
+        self.all_layers.extend( [self.outputs] )
+
+class ReduceMeanLayer(Layer):
+    def __init__(
+        self,
+        layer = None,
+        axis = [1, 2, 3],
+        name ='reduce_mean_layer',
+    ):
+        # check layer name (fixed)
+        Layer.__init__(self, name=name)
+
+        # the input of this layer is the output of previous layer (fixed)
+        self.inputs = layer.outputs
+        print("  [TL] ReduceMeanLayer   %s: axis:%s" % (self.name, str(axis)))
+
+        # operation (customized)
+        self.outputs = tf.reduce_mean(self.inputs, axis = axis, name = name)
+
+        # get stuff from previous layer (fixed)
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+
+        # update layer (customized)
+        self.all_layers.extend( [self.outputs] )
+        
+'''
+def glorot_initializer(prev_units, num_units, stddev_factor):
+    """Initialization in the style of Glorot 2010.
+        stddev_factor should be 1.0 for linear activations, and 2.0 for ReLUs"""
+    stddev  = np.sqrt(stddev_factor / np.sqrt(prev_units*num_units))
+    return tf.truncated_normal_initializer(stddev)
+
+def glorot_initializer_conv2d(prev_units, num_units, mapsize, stddev_factor):
+    """Initialization in the style of Glorot 2010.
+        stddev_factor should be 1.0 for linear activations, and 2.0 for ReLUs"""
+    stddev  = np.sqrt(stddev_factor / (np.sqrt(prev_units*num_units)*mapsize*mapsize))
+    return tf.truncated_normal_initializer(stddev)
+'''
 
 
 
