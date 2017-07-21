@@ -6,7 +6,8 @@
 import numpy as np
 from six.moves import xrange
 
-def minibatches(inputs=None, targets=None, batch_size=None, shuffle=False):
+# edited by Junshen
+def minibatches(inputs=None, targets=None, batch_size=None, shuffle=False, use_all = False):
     """Generate a generator that input a group of example in numpy.array and
     their labels, return the examples and labels by the given batchsize.
 
@@ -42,16 +43,39 @@ def minibatches(inputs=None, targets=None, batch_size=None, shuffle=False):
     ...        ['f', 'f']],
     ...         dtype='<U1'), array([4, 5]))
     """
-    assert len(inputs) == len(targets)
+    assert (targets is None) or (len(inputs) == len(targets))
     if shuffle:
         indices = np.arange(len(inputs))
         np.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batch_size + 1, batch_size):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batch_size]
-        else:
-            excerpt = slice(start_idx, start_idx + batch_size)
-        yield inputs[excerpt], targets[excerpt]
+    if use_all:
+        start_idx = 0
+        while start_idx < len(inputs):
+            if start_idx + batch_size > len(inputs):
+                if shuffle:
+                    excerpt = indices[start_idx:]
+                else:
+                    excerpt = slice(start_idx, len(inputs))
+            else:
+                if shuffle:
+                    excerpt = indices[start_idx:start_idx + batch_size]
+                else:
+                    excerpt = slice(start_idx, start_idx + batch_size)
+            start_idx += batch_size
+            if targets is None:
+                yield inputs[excerpt]
+            else:
+                yield inputs[excerpt], targets[excerpt]
+               
+    else:
+        for start_idx in range(0, len(inputs) - batch_size + 1, batch_size):
+            if shuffle:
+                excerpt = indices[start_idx:start_idx + batch_size]
+            else:
+                excerpt = slice(start_idx, start_idx + batch_size)
+            if targets is None:
+                yield inputs[excerpt]
+            else:
+                yield inputs[excerpt], targets[excerpt]
 
 def seq_minibatches(inputs, targets, batch_size, seq_length, stride=1):
     """Generate a generator that return a batch of sequence inputs and targets.
