@@ -11,7 +11,7 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+#import pandas as pd
 import os
 from . import prepro
 from .metrics import getErrorMetrics
@@ -513,8 +513,9 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     labels : label of each group
     """
     
-    df = pd.DataFrame(data, columns=labels)
-    df.boxplot(return_type='axes')
+    #df = pd.DataFrame(data, columns=labels)
+    #df.boxplot(return_type='axes')
+    plt.boxplot(data, labels=labels, return_type='axes')
     plt.xlabel(xlabel)
     plt.ylabel(xlabel)
     plt.title(title)
