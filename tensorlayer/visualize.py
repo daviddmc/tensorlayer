@@ -502,7 +502,7 @@ def bar(mean, std=None,
     plt.tight_layout()  
     plt.show() 
     
-def box(data, xlabel = '', ylabel = '', title = '', labels = None):
+def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = True):
     """Make a box and whisker plot.
     
     parameters
@@ -518,7 +518,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     medianprops = dict(linewidth=2, color='r') 
     meanpointprops = dict(marker='D', markeredgecolor='g',markerfacecolor='g')
    
-    plt.boxplot(data, labels=labels, 
+    plt.boxplot(data, labels=labels, showmeans = showmeans
 		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops, meanprops=meanpointprops)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
