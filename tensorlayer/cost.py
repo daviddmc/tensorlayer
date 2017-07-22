@@ -1,3 +1,5 @@
+# coding=utf-8
+
 def cross_entropy(output, target, name=None):
     """It is a softmax cross-entropy operation, returns the TensorFlow expression of cross-entropy of two distributions, implement
     softmax internally. See ``tf.nn.sparse_softmax_cross_entropy_with_logits``.
