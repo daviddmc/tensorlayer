@@ -512,10 +512,8 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     title : title of the figure
     labels : label of each group
     """
-    
-    #df = pd.DataFrame(data, columns=labels)
-    #df.boxplot(return_type='axes')
-    plt.boxplot(data, labels=labels, return_type='axes')
+
+    plt.boxplot(data, labels=labels)
     plt.xlabel(xlabel)
     plt.ylabel(xlabel)
     plt.title(title)
