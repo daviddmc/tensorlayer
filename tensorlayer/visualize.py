@@ -515,10 +515,11 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     """
     boxprops = dict(color='b')
     flierprops = dict(marker='+')
-    medianprops = dict(linewidth=2, color='r')
+    medianprops = dict(linewidth=2, color='r') 
+    meanpointprops = dict(marker='D', markeredgecolor='g',markerfacecolor='g')
    
     plt.boxplot(data, labels=labels, 
-		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops)
+		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops, meanpointprops=meanpointprops)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
