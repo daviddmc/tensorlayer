@@ -519,7 +519,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     medianprops = dict(linewidth=2, color='r') 
     meanpointprops = dict(marker='D', markeredgecolor='g',markerfacecolor='g')
    
-    plt.boxplot(data, labels=labels, showmeans = showmeans
+    plt.boxplot(data, labels=labels, showmeans = showmeans,
 		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops, meanprops=meanpointprops)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
