@@ -21,6 +21,8 @@ from . import visualize
 from . import prepro
 from . import nlp
 from . import rein
+from . import network
+from . import metrics
 
 # alias
 act = activation
