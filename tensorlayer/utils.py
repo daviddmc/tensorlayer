@@ -539,93 +539,82 @@ def get_random_int(min=0, max=10, number=5, seed=None):
 #     # print(X_train.shape, len(y_train))
 #     return X_train, np.asarray(y_train)
 
-def fit_gan(sess, G, G_test, D_fake, D_fake_test, D_real, D_real_test,
-            train_G, train_D, G_cost, G_cost_test,D_cost, D_cost_test,
-            X_train, y_train, x, y_, acc=None, batch_size=100,
-        n_epoch = 100, print_freq = 5, X_val = None, y_val = None, eval_train = True, save_freq = 5, save_path = None,
-        tensorboard=False, tensorboard_epoch_freq=5, tensorboard_weight_histograms=True, tensorboard_graph_vis=True):
+def fit_gan(sess, G, G_test, D, train_G, train_D, 
+            G_loss_dict, D_loss_dict,
+            X_train, y_train, x, y_,
+            lr_init = 0.001, lr_var = None, decay_rate = 0.1, decay_period = None, lr_min = 0.00001, global_step = None,
+            batch_size=100, n_epoch = 100, ep_continue = 0, print_freq = 5, 
+            X_val = None, y_val = None, eval_fn = None, eval_freq = 30, 
+            save_freq = 5, save_path = None):
     
     assert X_train.shape[0] >= batch_size, "Number of training examples should be bigger than the batch size"
+    
+    if decay_period is not None:
+        assert lr_var is not None and global_step is not None
     
     if save_path is not None:
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-  
-    # network_test and cost_test are added in case that the network structure is different for testing and training, 
-    # e.g. batch normalization
-    #if network_test is None:
-    #    network_test = network
-    #if cost_test is None:
-    #    cost_test = cost
 
     print("Start training the network ...")
     start_time_begin = time.time()
-    tensorboard_train_index, tensorboard_val_index = 0, 0
     
+    if ep_continue:
+        print('continue to train ep{}'.format(ep_continue))
+        loss_record = np.load(os.path.join(save_path, 'loss.npz'))
+        loss_g_list = loss_record['loss_g'].tolist()
+        loss_d_list = loss_record['loss_d'].tolist()
+        sess.run(tf.assign(global_step, ep_continue * (X_train.shape[0] // batch_size) ))
+        print('continue step {}'.format(ep_continue * (X_train.shape[0] // batch_size)))
+        if decay_period:
+            new_lr_decay = decay_rate ** ((ep_continue) // decay_period)
+            sess.run(tf.assign(lr_var, max(lr_init * new_lr_decay, lr_min)))
+            print(" ** continue learning rate: %f " % (lr_init * new_lr_decay))
+    else:
+        loss_g_list = []
+        loss_d_list = []
     
-    G_loss_ep_list = []
-    G_loss_val_list = []
-    D_loss_ep_list = []
-    D_loss_val_list = []
-    
-    for epoch in range(n_epoch):
+    for epoch in range(ep_continue, n_epoch):
         start_time = time.time()
-        G_loss_ep = 0; D_loss_ep=0; n_step = 0
-        for X_train_a, y_train_a in iterate.minibatches(X_train, y_train,
-                                                    batch_size, shuffle=True):
+        g_loss_ep = 0; d_loss_ep=0; n_step = 0
+        for X_train_a, y_train_a in iterate.minibatches(X_train, y_train, batch_size, shuffle=True):
             feed_dict = {x: X_train_a, y_: y_train_a}
-            feed_dict.update( G.all_drop )
-            feed_dict.update( D_fake.all_drop )
-            feed_dict.update( D_real.all_drop )
-            G_loss,D_loss,_ ,_ = sess.run([G_cost,D_cost , train_G, train_D], feed_dict=feed_dict)
-            G_loss_ep += G_loss
-            D_loss_ep += D_loss
+            ## update D
+            d_dict = sess.run(D_dict, feed_dict)
+            ## update G
+            g_dict = sess.run(G_dict, feed_dict)
+            
+            g_loss_ep += g_dict['g_loss']
+            d_loss_ep += d_loss['d_loss']
             n_step += 1
-        G_loss_ep = G_loss_ep/ n_step
-        G_loss_ep_list.append(G_loss_ep)
-        D_loss_ep = D_loss_ep/ n_step
-        D_loss_ep_list.append(D_loss_ep)
+        g_loss_ep = g_loss_ep/ n_step
+        loss_g_list.append(g_loss_ep)
+        d_loss_ep = d_loss_ep/ n_step
+        loss_d_list.append(d_loss_ep)
+    
+        if decay_period and ((epoch+1) % decay_period == 0):
+            new_lr_decay = decay_rate ** ((epoch+1) // decay_period)
+            sess.run(tf.assign(lr_var, max(lr_init * new_lr_decay, lr_min)))
+            print(" ** new learning rate: %f " % (lr_init * new_lr_decay))
 
         if epoch + 1 == 1 or (epoch + 1) % print_freq == 0:
-            if (X_val is not None) and (y_val is not None):
-                print("Epoch %d of %d took %fs" % (epoch + 1, n_epoch, time.time() - start_time))
-                if eval_train is True:
-                    pass
-                else:
-                    print("   epoch G loss: %f" % (G_loss_ep))
-                    print("   epoch D loss: %f" % (D_loss_ep))
-                G_val_loss, D_val_loss, n_batch = 0, 0, 0
-                for X_val_a, y_val_a in iterate.minibatches(
-                                            X_val, y_val, batch_size, shuffle=True, use_all = True):     
-                    feed_dict = {x: X_val_a, y_: y_val_a}
-                    feed_dict.update(dict_to_one( G_test.all_drop ))
-                    feed_dict.update(dict_to_one( D_fake_test.all_drop ))
-                    feed_dict.update(dict_to_one( D_real_test.all_drop ))
-                    if acc is not None:
-                        pass
-                    else:
-                        G_err, D_err = sess.run([G_cost_test, D_cost_test], feed_dict=feed_dict)
-                    G_val_loss += G_err
-                    D_val_loss += D_err
-                    n_batch += 1
-                print(" G val loss: %f" % (G_val_loss/ n_batch))
-                print(" D val loss: %f" % (D_val_loss/ n_batch))
-                if (save_path is not None) and len(G_loss_val_list) and float(G_val_loss/ n_batch) <  float(min(G_loss_val_list)):
-                    tl.files.save_npz(G.all_params, name = os.path.join(save_path,'epbest.npz'), sess=sess)
-                G_loss_val_list.append(G_val_loss/ n_batch)
-                D_loss_val_list.append(D_val_loss/ n_batch)                       
-            else:
-                print("Epoch %d of %d took %fs, loss %f" % (epoch + 1, n_epoch, time.time() - start_time, G_loss_ep))
+            print("Epoch %d of %d took %fs" % (epoch + 1, n_epoch, time.time() - start_time))
+            print("   epoch G loss: %f" % (g_loss_ep))
+            print("   epoch D loss: %f" % (d_loss_ep))
+        
+        if (epoch + 1) % eval_freq == 0:
+            print("evaluation")
+            eval_fn(X_val, y_val, epoch+1)
+        
         if (epoch + 1) % save_freq == 0:   
             if save_path is not None:
-                tl.files.save_npz(G.all_params, name = os.path.join(save_path,'ep{0}.npz'.format(epoch + 1)), sess=sess)
+                tl.files.save_npz(G.all_params, name = os.path.join(save_path,'g_ep{0}.npz'.format(epoch + 1)), sess=sess)
+                tl.files.save_npz(D.all_params, name = os.path.join(save_path,'d_ep{0}.npz'.format(epoch + 1)), sess=sess)
     
     if save_path is not None:
         np.savez(os.path.join(save_path, 'loss.npz'), 
-                 G_loss_ep = G_loss_ep_list, G_loss_val = G_loss_val_list,
-                 D_loss_ep = D_loss_ep_list, D_loss_val = D_loss_val_list)
-        
-    
+                 loss_g = loss_g_list, loss_d = loss_d_list)
+
     print("Total training time: %fs" % (time.time() - start_time_begin))
 
 def myfit(sess, network, network_test, train_op, cost, cost_test, 
