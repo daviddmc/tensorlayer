@@ -7,6 +7,7 @@ import numpy as np
 import time
 import math
 import random
+import os
 
 
 def fit(sess, network, train_op, cost, X_train, y_train, x, y_, acc=None, batch_size=100,
