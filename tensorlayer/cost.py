@@ -1,4 +1,15 @@
-# coding=utf-8
+#! /usr/bin/python
+# -*- coding: utf8 -*-
+
+
+
+import tensorflow as tf
+import numbers
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import standard_ops
+import numpy as np
+
+## Cost Functions
 
 def cross_entropy(output, target, name=None):
     """It is a softmax cross-entropy operation, returns the TensorFlow expression of cross-entropy of two distributions, implement
