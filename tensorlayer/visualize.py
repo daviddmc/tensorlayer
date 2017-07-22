@@ -513,8 +513,12 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     title : title of the figure
     labels : label of each group
     """
-
-    plt.boxplot(data, labels=labels)
+    boxprops = dict(color='b')
+    flierprops = dict(marker='+')
+    medianprops = dict(linewidth=2, color='r')
+   
+    plt.boxplot(data, labels=labels, 
+		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
