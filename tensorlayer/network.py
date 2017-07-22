@@ -6,7 +6,7 @@ from .activation import lrelu
 def unet(x, is_train = True, reuse = False, 
          num_channel_out = 1, num_channel_first = 32, 
          num_conv_per_pooling = 2, num_poolings = 3, 
-         use_bn = False, use_dc = False, use_res = True,
+         use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False,
          act = tf.tanh):
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
@@ -73,7 +73,13 @@ def unet(x, is_train = True, reuse = False,
         for i in xrange(1, num_poolings+1):
         #fro i in range(num_poolings, 0):
             up_decoder = up(conv_decoders[-1], list_num_features[-i], name = 'up_{0}'.format(num_poolings+1-i))
-            up_decoder = ConcatLayer([up_decoder, convs[-i]], 3, name='concat_{0}'.format(num_poolings+1-i))
+            if use_concat:
+                tmp_list = [convs[-i]]
+                if den_con:
+                    for j in xrange(i + 1, num_poolings + 1):
+                        tmp_list.append(MaxPool2d(convs[-j], (2*(j-i), 2*(j-i)), 
+                                                  name = 'den_pool{}_{}'.format(num_poolings+1-i, num_poolings+1-j)))
+                up_decoder = ConcatLayer([up_decoder] + tmp_list, 3, name='concat_{0}'.format(num_poolings+1-i))
             conv_decoder = up_decoder
             for j in xrange(num_conv_per_pooling):
                 conv_decoder = Conv2d(conv_decoder, list_num_features[-i], (3, 3), act=conv_act, name='uconv{0}_{1}'.format(num_poolings+1-i, j+1))
