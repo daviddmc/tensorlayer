@@ -516,7 +516,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
 
     plt.boxplot(data, labels=labels)
     plt.xlabel(xlabel)
-    plt.ylabel(xlabel)
+    plt.ylabel(ylabel)
     plt.title(title)
     plt.show()
 
