@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import ConnectionPatch
 import numpy as np
 #import pandas as pd
 import os
@@ -519,4 +520,67 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None):
     plt.title(title)
     plt.show()
 
+
+
+def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None):
+	
+	if type(imgs) is not list:
+		imgs = [imgs]
+	
+	if size is None:
+		size = (imgs[0].shape[0]//2, imgs[0].shape[1]//2)
+	assert start[0] >= 0 and start[1] >= 0 and size[0] > 0 and size[1] > 0
+	assert start[0] + size[0] <= imgs[0].shape[0] and start[1] + size[1] <= imgs[0].shape[1]
+
+	if layout is None:
+		layout = (1, len(imgs))
+	
+	if titles is None:
+		titles = [''] * len(imgs)
+	
+	if mask is not None:
+		imgs = [img * mask for img in imgs]
+
+	plt.figure()
+	
+	for i in range(layout[0]):
+		for j in range(layout[1]):
+			idx = i*layout[1] + j
+			p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
+			p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
+
+			p1.imshow(imgs[idx], cmap=cmap)
+			p1.set_xticks([])
+			p1.set_yticks([])
+			p2.imshow(imgs[idx][start[0]:start[0]+size[0], start[1]:start[1]+size[1]], cmap=cmap)
+			p2.set_xticks([])
+			p2.set_yticks([])
+
+			p1.set_title(titles[idx])
+
+			# plot the box
+			tx0 = start[1]
+			tx1 = start[1] + size[1]
+			ty0 = start[0]
+			ty1 = start[0] + size[0]
+			sx = [tx0,tx1,tx1,tx0,tx0]
+			sy = [ty0,ty0,ty1,ty1,ty0]
+			p1.plot(sx,sy,"b")
+
+			# plot patch lines
+			xy=(start[1] + size[1], start[0] + size[0])
+			xy2 = (0,size[0]-1)
+			con = ConnectionPatch(xyA=xy2,xyB=xy,coordsA="data",coordsB="data",
+					axesA=p2,axesB=p1,color='g')
+			p2.add_artist(con)
+
+			xy = (start[1] + size[1], start[0])
+			xy2 = (0,0)
+			con = ConnectionPatch(xyA=xy2,xyB=xy,coordsA="data",coordsB="data",
+					axesA=p2,axesB=p1,color='g')
+			p2.add_artist(con)
+	plt.tight_layout()
+	plt.show()
+	
+    
 #
