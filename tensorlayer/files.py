@@ -17,6 +17,7 @@ from six.moves import urllib
 from six.moves import cPickle
 from six.moves import zip
 from tensorflow.python.platform import gfile
+import pydicom
 
 
 ## Load dataset functions
