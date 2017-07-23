@@ -485,14 +485,14 @@ def bar(mean, std=None,
     n_groups = mean.shape[0]  
     fig, ax = plt.subplots()  
     index = np.arange(n_groups)  
-    bar_width = 0.15
+    bar_width = 0.2
     group_width = len(labels) * bar_width + 2*bar_width
     opacity = 0.4
-    
+    error_kw  dict(capsize = bar_width/2, elinewidth = 1)
     for i in range(len(labels)):
         plt.bar(index*group_width + i*bar_width, mean[:,i], bar_width, 
                 alpha=opacity, color=COLOR[np.mod(i, len(COLOR))],
-                label=labels[i], yerr =std[:,i])  
+                label=labels[i], yerr =std[:,i], error_kw=error_kw)  
     plt.xlabel(xlabel)  
     plt.ylabel(ylabel)  
     plt.title(title)  
