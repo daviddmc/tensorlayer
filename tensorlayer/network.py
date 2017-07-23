@@ -73,7 +73,7 @@ def unet(x, is_train = True, reuse = False,
         return outputs
          
     # dense block
-    def dense_block(inputs, depth, out_channel, name):
+    def block(inputs, depth, out_channel, name):
         
         with tf.variable_scope(name):
             for i in range(depth):
