@@ -1609,7 +1609,7 @@ def data_augment(images,
     if crop_size is not None:
         images = tf.map_fn(lambda img: random_crop_image(img, crop_size, crop_num), images)
         shape = images.get_shape().as_list()
-        images = tf.reshape([-1] + shape[2:])
+        images = tf.reshape(images, [-1] + shape[2:])
     
     return images
     
