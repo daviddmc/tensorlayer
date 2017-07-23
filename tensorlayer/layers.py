@@ -5983,7 +5983,9 @@ class ResLayer(Layer):
         # get stuff from previous layer (fixed)
         self.all_layers = list(layer1.all_layers) + list(layer2.all_layers)
         self.all_params = list(layer1.all_params) + list(layer2.all_layers)
-        self.all_drop = dict(layer1.all_drop).update(dict(layer2.all_drop))
+        #self.all_drop = dict(layer1.all_drop).update(dict(layer2.all_drop))
+        self.all_drop = dict(layer1.all_drop)
+        self.all_drop.update(dict(layer2.all_drop))
         
         self.all_layers = list_remove_repeat(self.all_layers)
         self.all_params = list_remove_repeat(self.all_params)
