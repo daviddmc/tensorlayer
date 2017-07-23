@@ -5954,6 +5954,42 @@ class PadLayer(Layer):
         # update layer (customized)
         self.all_layers.extend( [self.outputs] )
     
+class ResLayer(Layer):
+    def __init__(
+        self,
+        layer1,
+        layer2,
+        name ='res_layer',
+    ):
+        # check layer name (fixed)
+        Layer.__init__(self, name=name)
+
+        # the input of this layer is the output of previous layer (fixed)
+        self.inputs = [layer1.outputs, layer2.outpus]
+        print("  [TL] ResLayer   %s: shape:%s + %s" % (self.name, 
+                                                       str(layer1.outputs.get_shape().as_list()),
+                                                       str(layer2.outputs.get_shape().as_list())))
+
+        # operation (customized)
+        c1 = layer1.outputs.get_shape().as_list()[-1]
+        c2 = layer2.outputs.get_shape().as_list()[-1] 
+        if c1 == c2:
+            self.outputs = layer1.outputs + layer2.outputs
+        elif c1 < c2:
+            self.outputs = layer1.outputs + layer2.outputs[:,:,:,:c1]
+        else:
+            self.outputs = layer1.outputs + tf.pad(layer2.outputs,[[0,0],[0,0],[0,0],[0, c1-c2]])
+
+        # get stuff from previous layer (fixed)
+        self.all_layers = list(layer1.all_layers) + list(layer2.all_layers)
+        self.all_params = list(layer1.all_params) + list(layer2.all_layers)
+        self.all_drop = dict(layer1.all_drop).update(dict(layer2.all_drop))
+        
+        self.all_layers = list_remove_repeat(self.all_layers)
+        self.all_params = list_remove_repeat(self.all_params)
+        
+        # update layer (customized)
+        self.all_layers.extend( [self.outputs] )
         
 '''
 def glorot_initializer(prev_units, num_units, stddev_factor):
