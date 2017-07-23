@@ -589,6 +589,80 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 			p2.add_artist(con)
 	plt.tight_layout()
 	plt.show()
+
+def plot_image_profile(imgs, layout = None,  orientation = 'v', position = None, cmap=None, titles = None, seperate=True):
 	
+	if type(imgs) is not list:
+		imgs = [imgs]
+	
+	if position is None:
+		if orientation == 'v':
+			position = imgs[0].shape[1] / 2
+	    	elif orientation == 'h':
+			position = imgs[0].shape[0] / 2
+	    	else:
+			raise Exception('orientation error: h (horizontal) or v (vertical)')
+
+	if layout is None:
+		layout = (1, len(imgs))
+	
+	if titles is None:
+		titles = [''] * len(imgs)
+	
+	if seperate:
+		plt.figure()
+		for i in range(layout[0]):
+			for j in range(layout[1]):
+				idx = i*layout[1] + j
+				if idx >= len(imgs):
+					continue
+				p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
+				p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2)
+
+				p1.imshow(imgs[idx], cmap=cmap)
+				if orientation == 'h':
+					p1.plot([0, imgs[idx].shape[0]-1],[position, position], color='g')
+				else:
+					p1.plot([position, position],[0, imgs[idx].shape[1]-1], color='g')
+				p1.set_xticks([])
+				p1.set_yticks([])
+				if orientation == 'v':
+					p2.plot(imgs[idx][:,position])
+				else:
+					p2.plot(imgs[idx][position])
+				p1.set_title(titles[idx])
+				p2.set_xlabel('position')
+				p2.set_ylabel('intensity')
+		plt.tight_layout()
+		plt.show()
+	else:
+		plt.figure()
+		for i in range(layout[0]):
+			for j in range(layout[1]):
+				idx = i*layout[1]+j
+				if idx >= len(imgs):
+					continue
+				p1 = plt.subplot(layout[0], layout[1], idx+1, aspect=1)
+				p1.imshow(imgs[idx], cmap=cmap)
+				if orientation == 'h':
+					p1.plot([0, imgs[idx].shape[0]-1],[position, position], color='g')
+				else:
+					p1.plot([position, position],[0, imgs[idx].shape[1]-1], color='g')
+				p1.set_xticks([])
+				p1.set_yticks([])
+				p1.set_title(titles[idx])
+		plt.tight_layout()
+		plt.show()
+		plt.figure()
+		for i in range(len(imgs)):
+			if orientation == 'v':
+				plt.plot(imgs[i][:,position], label=titles[i])
+			else:
+				plt.plot(imgs[i][position], label=titles[i])
+		plt.legend()
+		plt.title('profile')
+		plt.xlabel('position')
+		plt.ylabel('intensity')
+		plt.show()
     
 #
