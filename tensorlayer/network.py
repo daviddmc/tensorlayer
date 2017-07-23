@@ -6,7 +6,7 @@ from .activation import lrelu
 def unet(x, is_train = True, reuse = False, 
          num_channel_out = 1, num_channel_first = 32, 
          num_conv_per_pooling = 2, num_poolings = 3, 
-         use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False,
+         use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False, in_res = False,
          act = tf.tanh):
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
@@ -59,7 +59,11 @@ def unet(x, is_train = True, reuse = False,
             num_channel = num_channel_first*(2**(i-1))
             for j in range(num_conv_per_pooling):
                 conv_encoder = Conv2d(conv_encoder, num_channel, (3, 3), act=conv_act, name='conv{0}_{1}'.format(i+1, j+1))
-                conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))    
+                conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))
+            if in_res:
+                conv_encoder = conv_encoder + tf.pad(pools[-1],
+                                                     [[0,0],[0,0],[0,0],
+                                                      [0,conv_encoder.get_shape().as_list()[-1] - pools[-1].get_shape().as_list()[-1]]])
             pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
             pools.append(pool_encoder)
             convs.append(conv_encoder)
@@ -67,6 +71,10 @@ def unet(x, is_train = True, reuse = False,
 
         # center connection
         conv_center = Conv2d(pools[-1], list_num_features[-1] * 2, (3, 3), act=tf.nn.relu, name = 'conv_center')
+        if in_res:
+            conv_center = conv_center + tf.pad(pools[-1],
+                                                 [[0,0],[0,0],[0,0],
+                                                  [0,conv_center.get_shape().as_list()[-1] - pools[-1].get_shape().as_list()[-1]]])
         conv_decoders = [conv_center]
 
         # decode
@@ -83,7 +91,9 @@ def unet(x, is_train = True, reuse = False,
             conv_decoder = up_decoder
             for j in xrange(num_conv_per_pooling):
                 conv_decoder = Conv2d(conv_decoder, list_num_features[-i], (3, 3), act=conv_act, name='uconv{0}_{1}'.format(num_poolings+1-i, j+1))
-                conv_decoder = bn(conv_decoder, name = 'ubn{0}_{1}'.format(num_poolings+1-i, j+1))      
+                conv_decoder = bn(conv_decoder, name = 'ubn{0}_{1}'.format(num_poolings+1-i, j+1))
+            if in_res:
+                conv_decoder = conv_decoder + convs[-i]
             conv_decoders.append(conv_decoder)
 
         # output layer
