@@ -5929,6 +5929,32 @@ class ReduceMeanLayer(Layer):
         # update layer (customized)
         self.all_layers.extend( [self.outputs] )
         
+class PadLayer(Layer):
+    def __init__(
+        self,
+        layer,
+        paddings,
+        name ='pad_layer',
+    ):
+        # check layer name (fixed)
+        Layer.__init__(self, name=name)
+
+        # the input of this layer is the output of previous layer (fixed)
+        self.inputs = layer.outputs
+        print("  [TL] PadLayer   %s: pad:%s" % (self.name, str(paddings)))
+
+        # operation (customized)
+        self.outputs = tf.pad(self.inputs, paddings = paddings, name = name)
+
+        # get stuff from previous layer (fixed)
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+
+        # update layer (customized)
+        self.all_layers.extend( [self.outputs] )
+    
+        
 '''
 def glorot_initializer(prev_units, num_units, stddev_factor):
     """Initialization in the style of Glorot 2010.
