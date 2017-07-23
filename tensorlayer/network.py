@@ -103,7 +103,7 @@ def unet(x, is_train = True, reuse = False,
         encoders = []
         #downs = []
         for i in xrange(1, num_poolings+1):
-            encoder = dense_block(encoder, block_depth, growth_rate * i, 'dense_block{}'.format(i))
+            encoder = block(encoder, block_depth, growth_rate * i, 'dense_block{}'.format(i))
             encoders.append(encoder)
             encoder = down(encoder, growth_rate*i, 'mean', 'down{}'.format(i))
             
