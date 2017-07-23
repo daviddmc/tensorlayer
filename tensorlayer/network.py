@@ -143,7 +143,7 @@ def AutoContextNet(x, is_train = True, reuse = False, use_bn = False,
             for i in range(num_conv_per_stage - 1):
                 conv = Conv2d(conv, 64, (3,3), (1,1), conv_act, 'VALID', name = 'conv{0}_{1}'.format(stage+1, i+1))
                 conv = bn(conv, name = 'bn{0}_{1}'.format(stage+1, i+1))
-            conv = Conv2d(conv, 64, (3,3), (1,1), tf.sigmoid, 'VALID', name = 'conv{0}_{1}'.format(stage+1, num_conv_per_stage))
+            conv = Conv2d(conv, 1, (3,3), (1,1), tf.sigmoid, 'VALID', name = 'conv{0}_{1}'.format(stage+1, num_conv_per_stage))
             outputs.append(conv)
                 
     return outputs
