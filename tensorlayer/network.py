@@ -35,34 +35,83 @@ def unet(x, is_train = True, reuse = False,
         conv_act = tf.nn.relu
     
     # deconv or upsampling
-    if use_dc:
-        up = lambda x, out_channel, name : myDeConv2d(x, out_channel, (3, 3), (2, 2), name = name)
-    else:
-        up = lambda x, out_channel, name : UpSampling2dLayer(x, (2, 2), name = name)
+    #if use_dc:
+    #    up = lambda x, out_channel, name : myDeConv2d(x, out_channel, (3, 3), (2, 2), name = name)
+    #else:
+    #    up = lambda x, out_channel, name : UpSampling2dLayer(x, (2, 2), name = name)
     
+    # down sampling
+    def down(inputs, out_channel, method, name):
+        with tf.variable_scope(name):
+            if method == 'mean':
+                outputs = MeanPool2d(inputs, (2, 2), name = 'meanpool')
+                outputs = bn(outputs, 'bn')
+                outputs = Conv2d(outputs, out_channel, (1, 1), act=conv_act, name='conv')
+            elif method == 'max':
+                outputs = MaxPool2d(inputs, (2, 2), name = 'maxpool')
+                outputs = bn(outputs, 'bn')
+                outputs = Conv2d(outputs, out_channel, (1, 1), act=conv_act, name='conv')
+            elif method == 'conv':
+                outputs = bn(inputs, 'bn')
+                outputs = Conv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name='conv')
+            else:
+                raise Exception('method error')
+        return outputs
+    
+    # up sampling
+    def up(inputs, out_channel, method, name):
+        with tf.variable_scope(name):
+            if method == 'deconv':
+                outputs = bn(inputs, 'bn')
+                outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name = 'deconv')
+            elif method == 'upsample':
+                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
+                outputs = bn(outputs, 'bn')
+                outputs = Conv2d(outputs, out_channel, (1,1), act=conv_act, name='conv')
+            else:
+                raise Exception('method error')
+        return outputs
+         
+    # dense block
+    def dense_block(inputs, depth, out_channel, name):
+        
+        with tf.variable_scope(name):
+            for i in range(depth):
+                  
+                conv = bn(inputs, 'bn{}_1'.format(i+1))
+                conv = Conv2d(conv, 2 * out_channel, (1, 1), act=conv_act, name='conv{}_1'.format(i+1))
+                
+                conv = bn(conv, 'bn{}_2'.format(i+1))
+                conv = Conv2d(conv, out_channel, (3, 3), act=conv_act, name='conv{}_2'.format(i+1))
+               
+                inputs = ConcatLayer([inputs, conv], 3, 'concat{}'.format(i+1))
+        
+        retrun inputs
+         
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
         
         # input
         inputs = InputLayer(x, name = 'input')
-        encoder =  Conv2d(inputs, num_channel_first, (3, 3), act=tf.nn.relu, name='input_conv')
+        #encoder =  Conv2d(inputs, num_channel_first, (3, 3), act=tf.nn.relu, name='input_conv')
+        encoder = inputs
          
         # encode
         encoders = []
         #downs = []
         for i in xrange(1, num_poolings+1):
-            encoder = block(encoder)
+            encoder = dense_block(encoder, block_depth, growth_rate * i, 'dense_block{}'.format(i))
             encoders.append(encoder)
             encoder = down(encoder)
             
         # center connection
-        decoer = block(encoder)
+        decoer = block(encoder, block_depth, growth_rate * (num_poolings+1), 'center')
          
         # decode
         for i in xrange(1, num_poolings+1):
             decoder = up(decoder)
-            decoder = concat(decoder, encoders[-i])
-            decoder = block(decoder)
+            decoder = ConcatLayer([decoder, encoders[-i]], 3, name = 'concat{}'.format(i))
+            decoder = block(decoder, block_depth, growth_rate * (num_poolings-i+1), 'dense_block-{}'.format(i))
          
         # output layer
         outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act, name='output')
