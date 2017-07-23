@@ -65,9 +65,9 @@ def unet(x, is_train = True, reuse = False,
                 outputs = bn(inputs, 'bn')
                 outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name = 'deconv')
             elif method == 'upsample':
-                outputs = bn(outputs, 'bn')
+                outputs = bn(inputs, 'bn')
                 outputs = Conv2d(outputs, out_channel, (1,1), act=conv_act, name='conv')
-                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
+                outputs = UpSampling2dLayer(outputs, (2, 2), name = 'upsample')
             else:
                 raise Exception('method error')
         return outputs
