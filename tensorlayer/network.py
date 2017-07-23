@@ -61,9 +61,10 @@ def unet(x, is_train = True, reuse = False,
                 conv_encoder = Conv2d(conv_encoder, num_channel, (3, 3), act=conv_act, name='conv{0}_{1}'.format(i+1, j+1))
                 conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))
             if in_res:
-                conv_encoder = conv_encoder + tf.pad(pools[-1],
-                                                     [[0,0],[0,0],[0,0],
-                                                      [0,conv_encoder.get_shape().as_list()[-1] - pools[-1].get_shape().as_list()[-1]]])
+                paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+                conv_encoder = ElementwiseLayer([conv_encoder,
+                                                 InputLayer(tf.pad(pools[-1].outputs,paddings = paddings), name = 'slice_en{}'.format(i+1))], 
+                                                tf.add, name='residual_en{}'.format(i+1))
             pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
             pools.append(pool_encoder)
             convs.append(conv_encoder)
@@ -72,9 +73,10 @@ def unet(x, is_train = True, reuse = False,
         # center connection
         conv_center = Conv2d(pools[-1], list_num_features[-1] * 2, (3, 3), act=tf.nn.relu, name = 'conv_center')
         if in_res:
-            conv_center = conv_center + tf.pad(pools[-1],
-                                                 [[0,0],[0,0],[0,0],
-                                                  [0,conv_center.get_shape().as_list()[-1] - pools[-1].get_shape().as_list()[-1]]])
+            paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+            conv_center = ElementwiseLayer([conv_center,
+                                            InputLayer(tf.pad(pools[-1].outputs,paddings = paddings), name = 'slice_cen')],
+                                           tf.add, name='residual_cen')
         conv_decoders = [conv_center]
 
         # decode
@@ -93,7 +95,7 @@ def unet(x, is_train = True, reuse = False,
                 conv_decoder = Conv2d(conv_decoder, list_num_features[-i], (3, 3), act=conv_act, name='uconv{0}_{1}'.format(num_poolings+1-i, j+1))
                 conv_decoder = bn(conv_decoder, name = 'ubn{0}_{1}'.format(num_poolings+1-i, j+1))
             if in_res:
-                conv_decoder = conv_decoder + convs[-i]
+                conv_decoder = ElementwiseLayer([conv_decoder, convs[-i]], tf.add, name='residual_de{}'.format(num_poolings+1-i))
             conv_decoders.append(conv_decoder)
 
         # output layer
