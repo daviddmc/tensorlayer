@@ -86,7 +86,7 @@ def unet(x, is_train = True, reuse = False,
                
                 inputs = ConcatLayer([inputs, conv], 3, 'concat{}'.format(i+1))
         
-        retrun inputs
+        return inputs
     
     growth_rate = 12
     block_depth = 3
