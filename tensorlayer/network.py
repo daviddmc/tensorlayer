@@ -108,7 +108,7 @@ def unet(x, is_train = True, reuse = False,
             encoder = down(encoder, growth_rate*i, 'mean', 'down{}'.format(i))
             
         # center connection
-        decoer = block(encoder, block_depth, growth_rate * (num_poolings+1), 'center')
+        decoder = block(encoder, block_depth, growth_rate * (num_poolings+1), 'center')
          
         # decode
         for i in xrange(1, num_poolings+1):
