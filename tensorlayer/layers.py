@@ -5965,7 +5965,7 @@ class ResLayer(Layer):
         Layer.__init__(self, name=name)
 
         # the input of this layer is the output of previous layer (fixed)
-        self.inputs = [layer1.outputs, layer2.outpus]
+        self.inputs = [layer1.outputs, layer2.outputs]
         print("  [TL] ResLayer   %s: shape:%s + %s" % (self.name, 
                                                        str(layer1.outputs.get_shape().as_list()),
                                                        str(layer2.outputs.get_shape().as_list())))
