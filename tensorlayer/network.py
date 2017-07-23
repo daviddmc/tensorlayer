@@ -63,7 +63,7 @@ def unet(x, is_train = True, reuse = False,
             if in_res:
                 paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
                 conv_encoder = ElementwiseLayer([conv_encoder,
-                                                 InputLayer(tf.pad(pools[-1].outputs,paddings = paddings), name = 'slice_en{}'.format(i+1))], 
+                                                 PadLayer(pools[-1], paddings = paddings, name = 'slice_en{}'.format(i+1))], 
                                                 tf.add, name='residual_en{}'.format(i+1))
             pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
             pools.append(pool_encoder)
@@ -75,7 +75,7 @@ def unet(x, is_train = True, reuse = False,
         if in_res:
             paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
             conv_center = ElementwiseLayer([conv_center,
-                                            InputLayer(tf.pad(pools[-1].outputs,paddings = paddings), name = 'slice_cen')],
+                                            PadLayer(pools[-1], paddings = paddings, name = 'slice_cen')],
                                            tf.add, name='residual_cen')
         conv_decoders = [conv_center]
 
