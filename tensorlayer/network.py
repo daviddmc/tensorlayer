@@ -45,73 +45,33 @@ def unet(x, is_train = True, reuse = False,
         
         # input
         inputs = InputLayer(x, name = 'input')
-        conv1 = inputs
-        for i in range(num_conv_per_pooling):
-            conv1 = Conv2d(conv1, num_channel_first, (3, 3), act=conv_act, name='conv{0}_{1}'.format(1, i+1))
-            conv1 = bn(conv1, name = 'bn{0}_{1}'.format(1, i))
-        pool1 = MaxPool2d(conv1, (2, 2), name = 'pool{0}'.format(1))
+        encoder =  Conv2d(inputs, num_channel_first, (3, 3), act=tf.nn.relu, name='input_conv')
+         
         # encode
-        convs = [inputs, conv1]
-        pools = [inputs, pool1]
-        list_num_features = [x.get_shape().as_list()[-1], num_channel_first]
-        for i in range(1, num_poolings):
-            conv_encoder = pools[-1]
-            num_channel = num_channel_first*(2**(i-1))
-            for j in range(num_conv_per_pooling):
-                conv_encoder = Conv2d(conv_encoder, num_channel, (3, 3), act=conv_act, name='conv{0}_{1}'.format(i+1, j+1))
-                conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))
-            if in_res:
-                paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
-                conv_encoder = ElementwiseLayer([conv_encoder,
-                                                 PadLayer(pools[-1], paddings = paddings, name = 'slice_en{}'.format(i+1))], 
-                                                tf.add, name='residual_en{}'.format(i+1))
-            pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
-            pools.append(pool_encoder)
-            convs.append(conv_encoder)
-            list_num_features.append(num_channel)
-
+        encoders = []
+        #downs = []
+        for i in xrange(1, num_poolings+1):
+            encoder = block(encoder)
+            encoders.append(encoder)
+            encoder = down(encoder)
+            
         # center connection
-        conv_center = Conv2d(pools[-1], list_num_features[-1] * 2, (3, 3), act=tf.nn.relu, name = 'conv_center')
-        if in_res:
-            paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
-            conv_center = ElementwiseLayer([conv_center,
-                                            PadLayer(pools[-1], paddings = paddings, name = 'slice_cen')],
-                                           tf.add, name='residual_cen')
-        conv_decoders = [conv_center]
-
+        decoer = block(encoder)
+         
         # decode
         for i in xrange(1, num_poolings+1):
-        #fro i in range(num_poolings, 0):
-            up_decoder = up(conv_decoders[-1], list_num_features[-i], name = 'up_{0}'.format(num_poolings+1-i))
-            if use_concat:
-                tmp_list = [convs[-i]]
-                if den_con:
-                    for j in xrange(i + 1, num_poolings + 1):
-                        tmp_list.append(MaxPool2d(convs[-j], (2*(j-i), 2*(j-i)), 
-                                                  name = 'den_pool{}_{}'.format(num_poolings+1-i, num_poolings+1-j)))
-                up_decoder = ConcatLayer([up_decoder] + tmp_list, 3, name='concat_{0}'.format(num_poolings+1-i))
-            conv_decoder = up_decoder
-            for j in xrange(num_conv_per_pooling):
-                conv_decoder = Conv2d(conv_decoder, list_num_features[-i], (3, 3), act=conv_act, name='uconv{0}_{1}'.format(num_poolings+1-i, j+1))
-                conv_decoder = bn(conv_decoder, name = 'ubn{0}_{1}'.format(num_poolings+1-i, j+1))
-            if in_res:
-                conv_decoder = ElementwiseLayer([conv_decoder, convs[-i]], tf.add, name='residual_de{}'.format(num_poolings+1-i))
-            conv_decoders.append(conv_decoder)
-
+            decoder = up(decoder)
+            decoder = concat(decoder, encoders[-i])
+            decoder = block(decoder)
+         
         # output layer
-        conv_decoder = conv_decoders[-1]
-        conv_output = Conv2d(conv_decoder, num_channel_out, (1, 1), act=act, name='output')
+        outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act, name='output')
         
+        # residual learnning
         if use_res:
-            if conv_output.outputs.get_shape().as_list()[-1] == x.get_shape().as_list()[-1]:
-                x_ = x
-            elif conv_output.outputs.get_shape().as_list()[-1] < x.get_shape().as_list()[-1]:
-                x_ = x[:,:,:,:conv_output.outputs.get_shape().as_list()[-1]]
-            else:
-                raise Exception(".")
-            conv_output = ElementwiseLayer([conv_output, InputLayer(x_, name = 'slice')], tf.add, name='residual')
-                
-    return conv_output
+            outputs = ResLayer(outputs, inputs, name = 'res_output')
+                  
+    return outputs
 
 def AutoContextNet(x, is_train = True, reuse = False, use_bn = False,
                   num_stage = 3, num_conv_per_stage = 4):
