@@ -552,6 +552,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			idx = i*layout[1] + j
+			if idx >= len(imgs):
+				continue
 			p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
 			p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
 
