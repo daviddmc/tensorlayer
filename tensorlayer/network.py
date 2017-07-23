@@ -65,9 +65,9 @@ def unet(x, is_train = True, reuse = False,
                 outputs = bn(inputs, 'bn')
                 outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name = 'deconv')
             elif method == 'upsample':
-                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
                 outputs = bn(outputs, 'bn')
                 outputs = Conv2d(outputs, out_channel, (1,1), act=conv_act, name='conv')
+                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
             else:
                 raise Exception('method error')
         return outputs
@@ -87,7 +87,10 @@ def unet(x, is_train = True, reuse = False,
                 inputs = ConcatLayer([inputs, conv], 3, 'concat{}'.format(i+1))
         
         retrun inputs
-         
+    
+    growth_rate = 12
+    block_depth = 3
+
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
         
@@ -102,14 +105,14 @@ def unet(x, is_train = True, reuse = False,
         for i in xrange(1, num_poolings+1):
             encoder = dense_block(encoder, block_depth, growth_rate * i, 'dense_block{}'.format(i))
             encoders.append(encoder)
-            encoder = down(encoder)
+            encoder = down(encoder, growth_rate*i, 'mean', 'down{}'.format(i))
             
         # center connection
         decoer = block(encoder, block_depth, growth_rate * (num_poolings+1), 'center')
          
         # decode
         for i in xrange(1, num_poolings+1):
-            decoder = up(decoder)
+            decoder = up(decoder, growth_rate*(num_poolings-i+1), 'upsample', 'up{}'.foramt(i))
             decoder = ConcatLayer([decoder, encoders[-i]], 3, name = 'concat{}'.format(i))
             decoder = block(decoder, block_depth, growth_rate * (num_poolings-i+1), 'dense_block-{}'.format(i))
          
