@@ -1607,7 +1607,7 @@ def data_augment(images,
     if transpose:
         images = tf.map_fn(lambda img: random_transpose_image(img), images)
     if crop_size is not None:
-        images = tf.map_fn(lambda img: random_crop_image(img), images)
+        images = tf.map_fn(lambda img: random_crop_image(img, crop_size, crop_num), images)
     
     return images
     
