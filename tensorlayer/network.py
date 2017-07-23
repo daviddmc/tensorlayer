@@ -112,7 +112,7 @@ def unet(x, is_train = True, reuse = False,
          
         # decode
         for i in xrange(1, num_poolings+1):
-            decoder = up(decoder, growth_rate*(num_poolings-i+1), 'upsample', 'up{}'.foramt(i))
+            decoder = up(decoder, growth_rate*(num_poolings-i+1), 'upsample', 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[-i]], 3, name = 'concat{}'.format(i))
             decoder = block(decoder, block_depth, growth_rate * (num_poolings-i+1), 'dense_block-{}'.format(i))
          
