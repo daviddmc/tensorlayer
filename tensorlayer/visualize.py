@@ -483,7 +483,7 @@ def bar(mean, std=None,
         labels = [''] * mean.shape[1]
     assert len(labels) == mean.shape[1]    
     n_groups = mean.shape[0]  
-    fig, ax = plt.subplots()  
+    #fig, ax = plt.subplots()  
     index = np.arange(n_groups)  
     bar_width = 0.2
     group_width = len(labels) * bar_width + 2*bar_width
