@@ -291,3 +291,113 @@ def SRGAN_d(input_images, is_train=True, reuse=False):
         
         
     return net_ho, logits
+
+def unet_old(x, is_train = True, reuse = False, 
+         num_channel_out = 1, num_channel_first = 32, 
+         num_conv_per_pooling = 2, num_poolings = 3, 
+         use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False, in_res = False,
+         act = tf.tanh):
+    """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
+    The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
+    image must be upsampled first.
+    
+    Parameters
+    ----------
+    x : input tf tensor
+    is_train : only bn layers will be affected by this flag
+    reuse : reuse variables
+    num_channel_out : number of output channels
+    num_channel_first : number of channels of the first convolution layer
+    num_conv_per_pooling : number of convolution layers betweent two pooling layers
+    num_poolings : number of pooling layers
+    use_bn : use batch normalization
+    use_dc : use deconvolution to upsample the image, otherwise use image resize
+    act : activation of the output layer usually sigmoid for image output and tanh for residual output"""
+    
+    # Batch Normalization
+    gamma_init = tf.random_normal_initializer(1., 0.02)
+    if use_bn:
+        bn = lambda x, name : BatchNormLayer(x, act = lambda y: lrelu(y, 0.2), is_train = is_train, gamma_init = gamma_init, name = name)
+        conv_act = None
+    else:
+        bn = lambda x, name : x
+        conv_act = tf.nn.relu
+    
+    # deconv or upsampling
+    if use_dc:
+        up = lambda x, out_channel, name : myDeConv2d(x, out_channel, (3, 3), (2, 2), name = name)
+    else:
+        up = lambda x, out_channel, name : UpSampling2dLayer(x, (2, 2), name = name)
+    
+    with tf.variable_scope("unet", reuse=reuse):
+        set_name_reuse(reuse)
+        
+        # input
+        inputs = InputLayer(x, name = 'input')
+        conv1 = inputs
+        for i in range(num_conv_per_pooling):
+            conv1 = Conv2d(conv1, num_channel_first, (3, 3), act=conv_act, name='conv{0}_{1}'.format(1, i+1))
+            conv1 = bn(conv1, name = 'bn{0}_{1}'.format(1, i))
+        pool1 = MaxPool2d(conv1, (2, 2), name = 'pool{0}'.format(1))
+        # encode
+        convs = [inputs, conv1]
+        pools = [inputs, pool1]
+        list_num_features = [x.get_shape().as_list()[-1], num_channel_first]
+        for i in range(1, num_poolings):
+            conv_encoder = pools[-1]
+            num_channel = num_channel_first*(2**(i-1))
+            for j in range(num_conv_per_pooling):
+                conv_encoder = Conv2d(conv_encoder, num_channel, (3, 3), act=conv_act, name='conv{0}_{1}'.format(i+1, j+1))
+                conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))
+            if in_res:
+                paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+                conv_encoder = ElementwiseLayer([conv_encoder,
+                                                 PadLayer(pools[-1], paddings = paddings, name = 'slice_en{}'.format(i+1))], 
+                                                tf.add, name='residual_en{}'.format(i+1))
+            pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
+            pools.append(pool_encoder)
+            convs.append(conv_encoder)
+            list_num_features.append(num_channel)
+
+        # center connection
+        conv_center = Conv2d(pools[-1], list_num_features[-1] * 2, (3, 3), act=tf.nn.relu, name = 'conv_center')
+        if in_res:
+            paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+            conv_center = ElementwiseLayer([conv_center,
+                                            PadLayer(pools[-1], paddings = paddings, name = 'slice_cen')],
+                                           tf.add, name='residual_cen')
+        conv_decoders = [conv_center]
+
+        # decode
+        for i in xrange(1, num_poolings+1):
+        #fro i in range(num_poolings, 0):
+            up_decoder = up(conv_decoders[-1], list_num_features[-i], name = 'up_{0}'.format(num_poolings+1-i))
+            if use_concat:
+                tmp_list = [convs[-i]]
+                if den_con:
+                    for j in xrange(i + 1, num_poolings + 1):
+                        tmp_list.append(MaxPool2d(convs[-j], (2*(j-i), 2*(j-i)), 
+                                                  name = 'den_pool{}_{}'.format(num_poolings+1-i, num_poolings+1-j)))
+                up_decoder = ConcatLayer([up_decoder] + tmp_list, 3, name='concat_{0}'.format(num_poolings+1-i))
+            conv_decoder = up_decoder
+            for j in xrange(num_conv_per_pooling):
+                conv_decoder = Conv2d(conv_decoder, list_num_features[-i], (3, 3), act=conv_act, name='uconv{0}_{1}'.format(num_poolings+1-i, j+1))
+                conv_decoder = bn(conv_decoder, name = 'ubn{0}_{1}'.format(num_poolings+1-i, j+1))
+            if in_res:
+                conv_decoder = ElementwiseLayer([conv_decoder, convs[-i]], tf.add, name='residual_de{}'.format(num_poolings+1-i))
+            conv_decoders.append(conv_decoder)
+
+        # output layer
+        conv_decoder = conv_decoders[-1]
+        conv_output = Conv2d(conv_decoder, num_channel_out, (1, 1), act=act, name='output')
+        
+        if use_res:
+            if conv_output.outputs.get_shape().as_list()[-1] == x.get_shape().as_list()[-1]:
+                x_ = x
+            elif conv_output.outputs.get_shape().as_list()[-1] < x.get_shape().as_list()[-1]:
+                x_ = x[:,:,:,:conv_output.outputs.get_shape().as_list()[-1]]
+            else:
+                raise Exception(".")
+            conv_output = ElementwiseLayer([conv_output, InputLayer(x_, name = 'slice')], tf.add, name='residual')
+                
+    return conv_output
