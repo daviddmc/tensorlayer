@@ -6135,7 +6135,7 @@ def DownSampling2D(inputs, scale = 2, out_channel = None, method = 'max',
     return outputs
 
 def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample', 
-		 act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'up')
+		 act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'up'):
     if bn:
         BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
