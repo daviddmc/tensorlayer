@@ -464,7 +464,7 @@ COLOR = ['b', 'r', 'g', 'y', 'c', 'm']
    
 def bar(mean, std=None, 
         xlabel='', ylabel='', title='', labels = None, 
-        ymin=None, ymax=None):
+        ymin=None, ymax=None, save_path = None):
     """make a bar plot
     
     parameters
@@ -500,8 +500,11 @@ def bar(mean, std=None,
     if ymin is not None and ymax is not None:
         plt.ylim(ymin,ymax)  
     plt.legend()  
-    plt.tight_layout()  
-    plt.show() 
+    plt.tight_layout()
+    if save_path is not None:
+	plt.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.show() 
     
 def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = True):
     """Make a box and whisker plot.
@@ -528,7 +531,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     plt.show()
 
 def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', capsize = 5, marker = '^', mfc='red',
-		 mec='red', ms=20):
+		 mec='red', ms=20, save_path = None):
     mean = np.mean(data, axis = 0)
     std = np.std(data, axis = 0)
     plt.figure()
@@ -540,9 +543,12 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.show()
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches='tight')   
+    else:
+        plt.show()
 
-def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None):
+def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
@@ -602,9 +608,14 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 					axesA=p2,axesB=p1,color='g')
 			p2.add_artist(con)
 	plt.tight_layout()
-	plt.show()
+	if save_path is not None:
+            plt.savefig(save_path, bbox_inches='tight')   
+        else:
+            plt.show()
+	
 
-def plot_image_profile(imgs, layout = None,  orientation = 'v', position = None, cmap=None, titles = None, seperate=True):
+def plot_image_profile(imgs, layout = None,  orientation = 'v', position = None, cmap=None, titles = None, 
+		       seperate=True, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
@@ -648,7 +659,10 @@ def plot_image_profile(imgs, layout = None,  orientation = 'v', position = None,
 				p2.set_xlabel('position')
 				p2.set_ylabel('intensity')
 		plt.tight_layout()
-		plt.show()
+		if save_path is not None:
+        	    plt.savefig(save_path, bbox_inches='tight')   
+    		else:
+                    plt.show()
 	else:
 		plt.figure()
 		for i in range(layout[0]):
