@@ -536,6 +536,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = ''):
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    plt.show()
 
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None):
 	
