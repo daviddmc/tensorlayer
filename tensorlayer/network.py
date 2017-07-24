@@ -54,11 +54,11 @@ def unet(x, is_train = True, reuse = False,
         elif block_type[key] == 'res':
             block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
                                                      use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda x： None
+            out_channel[key] = lambda x: None
         elif block_type[key] == 'conv':
             block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
                                                   use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda x： None
+            out_channel[key] = lambda x: None
             
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
