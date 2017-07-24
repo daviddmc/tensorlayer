@@ -6016,7 +6016,62 @@ class ActivationLayer(Layer):
         self.all_drop = dict(layer.all_drop)
 
         # update layer (customized)
-        self.all_layers.extend( [self.outputs] )        
+        self.all_layers.extend( [self.outputs] )       
+
+def residual_block(inputs, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'resblock'):
+	
+	if bn:
+		BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
+											gamma_init = tf.random_normal_initializer(1., 0.02),
+											name = name)
+	    Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
+    else:
+		BN = lambda x, name: x
+		Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
+    Act = lambda x, name: ActivationLayer(x, act = act, name = name)
+	
+	with tf.variable_scope(name):
+		in_channel = inputs.get_shape().as_list()[-1]
+		
+		conv = Conv(inputs, 'conv1')
+		conv = BN(conv, 'bn1')
+		conv = Act(conv, 'act1')
+		
+		conv = Conv(conv, 'conv2')
+		conv = BN(conv, 'bn2')
+		
+		if in_channel != out_channel:
+			shortcut = Conv(inputs, 'conv_shortcut')
+			shortcut = BN(shortcut, 'bn_shortcut')
+		
+		outputs = Act(ElementwiseLayer([conv, shortcut], tf.add, 'residual_connection'), 'act2')
+		
+	return outputs
+
+def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'denseblock'):
+    if bn:
+		BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
+											gamma_init = tf.random_normal_initializer(1., 0.02),
+											name = name)
+    else:
+		BN = lambda x, name: x
+    Act = lambda x, name: ActivationLayer(x, act = act, name = name)
+    
+    with tf.variable_scope(name):
+        for i in range(depth):
+
+            conv = BN(inputs, 'bn{}_1'.format(i+1))
+            conv = Act(conv, 'act{}_1'.format(i+1))
+            conv = Conv2d(conv, 4 * out_channel, (1, 1), name='conv{}_1'.format(i+1))
+
+            conv = BN(conv, 'bn{}_2'.format(i+1))
+            conv = Act(conv, 'act{}_2'.format(i+1))
+            conv = Conv2d(conv, out_channel, (3, 3), name='conv{}_2'.format(i+1))
+
+            inputs = ConcatLayer([inputs, conv], 3, 'concat{}'.format(i+1))
+
+    return inputs
+
 '''
 def glorot_initializer(prev_units, num_units, stddev_factor):
     """Initialization in the style of Glorot 2010.
