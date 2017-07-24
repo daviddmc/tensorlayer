@@ -1,3 +1,6 @@
+#! /usr/bin/python
+# -*- coding: utf8 -*-
+
 import tensorflow as tf
 import tensorlayer as tl
 from .layers import *
