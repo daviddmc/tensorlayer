@@ -6040,6 +6040,7 @@ def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, 
 	    conv = BN(conv, 'bn2')
 
 	    if in_channel != out_channel:
+		print('use conv')
 	        shortcut = Conv(inputs, 'conv_shortcut')
 	        shortcut = BN(shortcut, 'bn_shortcut')
 
