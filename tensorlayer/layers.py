@@ -6072,6 +6072,24 @@ def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_trai
 
     return inputs
 
+def conv_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'convblock'):
+    if bn:
+	BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act
+					    gamma_init = tf.random_normal_initializer(1., 0.02),
+					    name = name)
+	Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
+    else:
+	BN = lambda x, name: x
+        Conv = lambda x, name: Conv2d(x, out_channel, (3,3), act = act, name = name)
+    
+    conv = inputs
+    with tf.variable_scope(name):
+        for i in range(depth):
+            conv = Conv(conv, 'conv{}'.format(i+1))
+	    conv = BN(conv, 'bn{}'.format(i+1))
+
+    return conv
+
 '''
 def glorot_initializer(prev_units, num_units, stddev_factor):
     """Initialization in the style of Glorot 2010.
