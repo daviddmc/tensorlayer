@@ -35,11 +35,11 @@ def unet(x, is_train = True, reuse = False,
        
     down = lambda x, oc, name: DownSampling2D(x, scale = 2, out_channel = oc, method = method_down, 
                                               act = tf.nn.relu, bn = use_bn, is_train = is_train, 
-                                              BAC = True, name = name):     
+                                              BAC = True, name = name) 
     
     up = lambda x, oc, name: UpSampling2D(x, scale = 2, out_channel = oc, method = method_up, 
                                           act = tf.nn.relu, bn = use_bn, is_train = is_train, 
-                                          BAC = True, name = name):
+                                          BAC = True, name = name)
  
     block = {}
     out_channel = {}
