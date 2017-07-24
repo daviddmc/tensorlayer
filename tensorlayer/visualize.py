@@ -524,6 +524,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
+    plt.tight_layout()
     plt.show()
 
 def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', capsize = 5, marker = '^', mfc='red',
@@ -538,6 +539,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    plt.tight_layout()
     plt.show()
 
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None):
