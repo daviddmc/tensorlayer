@@ -32,68 +32,30 @@ def unet(x, is_train = True, reuse = False,
     use_bn : use batch normalization
     use_dc : use deconvolution to upsample the image, otherwise use image resize
     act : activation of the output layer usually sigmoid for image output and tanh for residual output"""
+       
+    down = lambda x, oc, name: DownSampling2D(x, scale = 2, out_channel = oc, method = method_down, 
+                                              act = tf.nn.relu, bn = use_bn, is_train = is_train, 
+                                              BAC = True, name = name):     
     
-    # Batch Normalization
-    
-    if use_bn:
-        gamma_init = tf.random_normal_initializer(1., 0.02)
-        bn = lambda x, name : BatchNormLayer(x, is_train = is_train, gamma_init = gamma_init, name = name)
-    else:
-        bn = lambda x, name : x
-    Act = lambda x, name : ActivationLayer(x, act = tf.nn.relu, name = name)
-        
-    # down sampling
-    def down(inputs, out_channel, method, name):
-        with tf.variable_scope(name):
-            if method == 'mean':
-                outputs = MeanPool2d(inputs, (2, 2), name = 'meanpool')
-                outputs = bn(outputs, 'bn')
-                outputs = Act(outputs, 'act')
-                outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
-            elif method == 'max':
-                outputs = MaxPool2d(inputs, (2, 2), name = 'maxpool')
-                outputs = bn(outputs, 'bn')
-                outputs = Act(outputs, 'act')
-                outputs = Conv2d(outputs, out_channel, (1, 1), act=conv_act, name='conv')
-            elif method == 'conv':
-                outputs = bn(inputs, 'bn')
-                outputs = Act(outputs, 'act')
-                outputs = Conv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name='conv')
-            else:
-                raise Exception('method error')
-        return outputs
-    
-    # up sampling
-    def up(inputs, out_channel, method, name):
-        with tf.variable_scope(name):
-            if method == 'deconv':
-                outputs = bn(inputs, 'bn')
-                outputs = Act(outputs, 'act')
-                outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), name = 'deconv')
-            elif method == 'upsample':
-                outputs = bn(inputs, 'bn')
-                outputs = Act(outputs, 'act')
-                outputs = Conv2d(outputs, out_channel, (1,1), name='conv')
-                outputs = UpSampling2dLayer(outputs, (2, 2), name = 'upsample')
-            else:
-                raise Exception('method error')
-        return outputs
-
+    up = lambda x, oc, name: UpSampling2D(x, scale = 2, out_channel = oc, method = method_up, 
+                                          act = tf.nn.relu, bn = use_bn, is_train = is_train, 
+                                          BAC = True, name = name):
+ 
     block = {}
     out_channel = {}
     for key in ['center','down','up']:
         if block_type[key] == 'dense':
             block[key] = lambda x, i : dense_block(x, dense_depth, dense_growth_rate, tf.nn.relu,
                                                    use_bn, is_train, 'dense_block{}'.format(i))
-            #out_channel[key] = lambda i: growth_rate * i
+            out_channel[key] = lambda x: x.outputs.get_shape().as_list()[-1] // 2
         elif block_type[key] == 'res':
             block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
                                                      use_bn, is_train, 'res_block{}'.format(i))
-            #out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * res_channel_first
+            out_channel[key] = lambda x： None
         elif block_type[key] == 'conv':
             block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
                                                   use_bn, is_train, 'res_block{}'.format(i))
-            #out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * conv_channel_first
+            out_channel[key] = lambda x： None
             
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
@@ -107,14 +69,14 @@ def unet(x, is_train = True, reuse = False,
         for i in xrange(1, num_downsampling+1):
             encoder = block['down'](encoder, i)
             encoders.append(encoder)
-            encoder = down(encoder, encoder.outputs.get_shape().as_list()[-1] // 2, method_down , 'down{}'.format(i))
+            encoder = down(encoder, out_channel['down'](encoder), 'down{}'.format(i))
             
         # center connection
         decoder = block['center'](encoder, (num_downsampling+1))
          
         # decode
         for i in xrange(num_downsampling, 0, -1):
-            decoder = up(decoder, decoder.outputs.get_shape().as_list()[-1] // 2, method_up , 'up{}'.format(i))
+            decoder = up(decoder, out_channel['up'](encoder), 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[i-1]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, -i)
          
