@@ -6074,7 +6074,7 @@ def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_trai
 
 def conv_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'convblock'):
     if bn:
-	BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act
+	BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
 					    name = name)
 	Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
