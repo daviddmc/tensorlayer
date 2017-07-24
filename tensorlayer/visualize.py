@@ -478,7 +478,7 @@ def bar(mean, std=None,
     ymin : minimum of y axis
     ymax : maximum of y axis
     """
-    
+    plt.figure()
     if labels is None:
         labels = [''] * mean.shape[1]
     assert len(labels) == mean.shape[1]    
@@ -518,7 +518,7 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     flierprops = dict(marker='+')
     medianprops = dict(linewidth=2, color='r') 
     meanpointprops = dict(marker='D', markeredgecolor='g',markerfacecolor='g')
-   
+    plt.figure()
     plt.boxplot(data, labels=labels, showmeans = showmeans,
 		boxprops=boxprops, flierprops=flierprops, medianprops=medianprops, meanprops=meanpointprops)
     plt.xlabel(xlabel)
@@ -532,7 +532,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = ''):
     plt.figure()
     if x is None:
         x = np.arange(data.shape[1])
-    plt.errorbar(x, mean, yerr = std)
+    plt.errorbar(x, mean, yerr = std, capsize = 3)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
