@@ -506,7 +506,7 @@ def bar(mean, std=None,
     else:
         plt.show() 
     
-def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = True):
+def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = True, save_path = None):
     """Make a box and whisker plot.
     
     parameters
@@ -528,8 +528,11 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     plt.ylabel(ylabel)
     plt.title(title)
     plt.tight_layout()
-    plt.show()
-
+    if save_path is not None:
+	plt.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.show() 
+	
 def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', capsize = 5, marker = '^', mfc='red',
 		 mec='red', ms=20, save_path = None):
     mean = np.mean(data, axis = 0)
