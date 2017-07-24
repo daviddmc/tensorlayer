@@ -115,7 +115,7 @@ def unet(x, is_train = True, reuse = False,
         # decode
         for i in xrange(num_downsampling, 0, -1):
             decoder = up(decoder, decoder.outputs.get_shape().as_list()[-1] // 2, method_up , 'up{}'.format(i))
-            decoder = ConcatLayer([decoder, encoders[i]], 3, name = 'concat{}'.format(i))
+            decoder = ConcatLayer([decoder, encoders[i-1]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, i)
          
         # output layer
