@@ -532,7 +532,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = ''):
     plt.figure()
     if x is None:
         x = np.arange(data.shape[1])
-    plt.errorbar(x, mean, yerr = std, capsize = 3)
+    plt.errorbar(x, mean, yerr = std, capsize = 3, markers = '^')
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
