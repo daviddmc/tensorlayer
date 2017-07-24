@@ -78,21 +78,22 @@ def unet(x, is_train = True, reuse = False,
             else:
                 raise Exception('method error')
         return outputs
-    
-
-         
 
     block = {}
+    out_channel = {}
     for key in ['center','down','up']:
         if block_type[key] == 'dense':
             block[key] = lambda x, i : dense_block(x, dense_depth, growth_rate * abs(i), tf.nn.relu,
                                                    use_bn, is_train, 'dense_block{}'.format(i))
+            out_channel[key] = lambda i: growth_rate * i
         elif block_type[key] == 'res':
             block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
                                                      use_bn, is_train, 'res_block{}'.format(i))
+            out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * res_channel_first
         elif block_type[key] == 'conv':
             block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
                                                   use_bn, is_train, 'res_block{}'.format(i))
+            out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * conv_channel_first
             
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
@@ -107,14 +108,14 @@ def unet(x, is_train = True, reuse = False,
         for i in xrange(1, num_poolings+1):
             encoder = block['down'](encoder, i)
             encoders.append(encoder)
-            encoder = down(encoder, growth_rate*i, 'mean', 'down{}'.format(i))
+            encoder = down(encoder, out_channel['down'](i), 'mean', 'down{}'.format(i))
             
         # center connection
         decoder = block['center'](encoder, (num_poolings+1))
          
         # decode
         for i in xrange(num_poolings, 0, -1):
-            decoder = up(decoder, growth_rate * i, 'upsample', 'up{}'.format(i))
+            decoder = up(decoder, out_channel['up'](i), 'upsample', 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[i]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, i)
          
