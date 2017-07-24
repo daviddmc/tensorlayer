@@ -6090,6 +6090,83 @@ def conv_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train
 
     return conv
 
+def DownSampling2D(inputs, scale = 2, out_channel = None, method = 'max', 
+		   act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'down'):
+    if bn:
+        BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
+					    gamma_init = tf.random_normal_initializer(1., 0.02),
+					    name = name)
+    else:
+	BN = lambda x, name: x
+    Act = lambda x, name: act(x, name = name)    
+
+    with tf.variable_scope(name):
+            if method == 'mean':
+                outputs = MeanPool2d(inputs, (scale, scale), name = 'meanpool')
+		if out_channel is not None:
+		    if not BAC:
+		        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+                    outputs = BN(outputs, 'bn')
+                    outputs = Act(outputs, 'act')
+		    if BAC:
+                        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+            elif method == 'max':
+                outputs = MaxPool2d(inputs, (scale, scale), name = 'maxpool')
+                if out_channel is not None:
+		    if not BAC:
+		        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+                    outputs = BN(outputs, 'bn')
+                    outputs = Act(outputs, 'act')
+		    if BAC:
+                        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+            elif method == 'conv':
+		if out_channel is None:
+		    out_channel = inputs.outputs.get_shape().as_list()[-1]
+		if not BAC:
+		    inputs = Conv2d(inputs, out_channel, 
+				     (2*scale-1, 2*scale-1), (scale, scale), act=conv_act, name='conv')
+                outputs = BN(inputs, 'bn')
+                outputs = Act(outputs, 'act')
+		if BAC:
+                    outputs = Conv2d(outputs, out_channel, 
+				     (2*scale-1, 2*scale-1), (scale, scale), act=conv_act, name='conv')
+            else:
+                raise Exception('method error')
+    return outputs
+
+def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample', 
+		 act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'up')
+    if bn:
+        BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
+					    gamma_init = tf.random_normal_initializer(1., 0.02),
+					    name = name)
+    else:
+	BN = lambda x, name: x
+    Act = lambda x, name: act(x, name = name)
+
+    with tf.variable_scope(name):
+            if method == 'deconv':
+		if out_channel is None:
+		    out_channel = inputs.outputs.get_shape().as_list()[-1]
+		if not BAC:
+		    inputs = myDeConv2d(inputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
+                outputs = bn(inputs, 'bn')
+                outputs = Act(outputs, 'act')
+		if BAC:
+                    outputs = myDeConv2d(outputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
+            elif method == 'upsample':
+		if out_channel is not None:
+		    if not BAC:
+		        inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
+                    inputs = bn(inputs, 'bn')
+                    inputs = Act(inputs, 'act')
+		    if BAC:
+                        inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
+                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
+            else:
+                raise Exception('method error')
+    return outputs
+
 '''
 def glorot_initializer(prev_units, num_units, stddev_factor):
     """Initialization in the style of Glorot 2010.
