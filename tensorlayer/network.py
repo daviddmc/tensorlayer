@@ -83,7 +83,7 @@ def unet(x, is_train = True, reuse = False,
     out_channel = {}
     for key in ['center','down','up']:
         if block_type[key] == 'dense':
-            block[key] = lambda x, i : dense_block(x, dense_depth, growth_rate, tf.nn.relu,
+            block[key] = lambda x, i : dense_block(x, dense_depth, dense_growth_rate, tf.nn.relu,
                                                    use_bn, is_train, 'dense_block{}'.format(i))
             #out_channel[key] = lambda i: growth_rate * i
         elif block_type[key] == 'res':
