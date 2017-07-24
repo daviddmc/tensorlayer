@@ -104,16 +104,16 @@ def unet(x, is_train = True, reuse = False,
          
         # encode
         encoders = []
-        for i in xrange(1, num_poolings+1):
+        for i in xrange(1, num_downsampling+1):
             encoder = block['down'](encoder, i)
             encoders.append(encoder)
             encoder = down(encoder, encoder.outputs.get_shape().as_list()[-1] // 2, method_down , 'down{}'.format(i))
             
         # center connection
-        decoder = block['center'](encoder, (num_poolings+1))
+        decoder = block['center'](encoder, (num_downsampling+1))
          
         # decode
-        for i in xrange(num_poolings, 0, -1):
+        for i in xrange(num_downsampling, 0, -1):
             decoder = up(decoder, decoder.outputs.get_shape().as_list()[-1] // 2, method_up , 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[i]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, i)
