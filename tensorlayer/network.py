@@ -7,7 +7,7 @@ def unet(x, is_train = True, reuse = False,
          num_channel_out = 1, num_channel_first = 32, num_downsampling = 3,
          use_bn = True, use_res = True, use_concat = True,
          method_down = 'mean', method_up = 'upsample',
-         block_type = {'down':'conv', 'center':'conv', 'up':'conv'},
+         block_type = {'down':'dense', 'center':'dense', 'up':'dense'},
          # conv block
          conv_depth = 2, conv_channel_first = 16,
          # dense block
@@ -83,24 +83,23 @@ def unet(x, is_train = True, reuse = False,
     out_channel = {}
     for key in ['center','down','up']:
         if block_type[key] == 'dense':
-            block[key] = lambda x, i : dense_block(x, dense_depth, growth_rate * abs(i), tf.nn.relu,
+            block[key] = lambda x, i : dense_block(x, dense_depth, growth_rate, tf.nn.relu,
                                                    use_bn, is_train, 'dense_block{}'.format(i))
-            out_channel[key] = lambda i: growth_rate * i
+            #out_channel[key] = lambda i: growth_rate * i
         elif block_type[key] == 'res':
             block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
                                                      use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * res_channel_first
+            #out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * res_channel_first
         elif block_type[key] == 'conv':
             block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
                                                   use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * conv_channel_first
+            #out_channel[key] = lambda i: 2**(abs(i + 1) - 1) * conv_channel_first
             
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
         
         # input
         inputs = InputLayer(x, name = 'input')
-        #encoder =  Conv2d(inputs, num_channel_first, (3, 3), act=tf.nn.relu, name='input_conv')
         encoder = inputs
          
         # encode
@@ -108,14 +107,14 @@ def unet(x, is_train = True, reuse = False,
         for i in xrange(1, num_poolings+1):
             encoder = block['down'](encoder, i)
             encoders.append(encoder)
-            encoder = down(encoder, out_channel['down'](i), 'mean', 'down{}'.format(i))
+            encoder = down(encoder, encoder.outputs.get_shape().as_list()[-1] // 2, method_down , 'down{}'.format(i))
             
         # center connection
         decoder = block['center'](encoder, (num_poolings+1))
          
         # decode
         for i in xrange(num_poolings, 0, -1):
-            decoder = up(decoder, out_channel['up'](i), 'upsample', 'up{}'.format(i))
+            decoder = up(decoder, decoder.outputs.get_shape().as_list()[-1] // 2, method_up , 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[i]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, i)
          
