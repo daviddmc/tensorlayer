@@ -526,13 +526,15 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     plt.title(title)
     plt.show()
 
-def errbar(data, x = None, xlabel = '', ylabel = '', title = ''):
+def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', capsize = 5, marker = '^', mfc='red',
+		 mec='red', ms=20):
     mean = np.mean(data, axis = 0)
     std = np.std(data, axis = 0)
     plt.figure()
     if x is None:
         x = np.arange(data.shape[1])
-    plt.errorbar(x, mean, yerr = std, capsize = 3, markers = '^')
+    plt.errorbar(x, mean, yerr = std, color = color, capsize = capsize, marker = marker, mfc=mfc,
+		 mec=mec, ms=ms)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
