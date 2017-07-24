@@ -4,10 +4,18 @@ from .layers import *
 from .activation import lrelu
 
 def unet(x, is_train = True, reuse = False, 
-         num_channel_out = 1, num_channel_first = 32, 
-         num_conv_per_pooling = 2, num_poolings = 3, 
-         use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False, in_res = False,
+         num_channel_out = 1, num_channel_first = 32, num_downsampling = 3,
+         use_bn = True, use_res = True, use_concat = True,
+         method_down = 'mean', method_up = 'upsample',
+         block_type = {'down':'conv', 'center':'conv', 'up':'conv'},
+         # conv block
+         conv_depth = 2, conv_channel_first = 16,
+         # dense block
+         dense_depth = 3, dense_growth_rate = 12,
+         # res block
+         res_num = 1, res_channel_first = 16,
          act = tf.tanh):
+         
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
     image must be upsampled first.
@@ -26,33 +34,30 @@ def unet(x, is_train = True, reuse = False,
     act : activation of the output layer usually sigmoid for image output and tanh for residual output"""
     
     # Batch Normalization
-    gamma_init = tf.random_normal_initializer(1., 0.02)
+    
     if use_bn:
-        bn = lambda x, name : BatchNormLayer(x, act = lambda y: lrelu(y, 0.2), is_train = is_train, gamma_init = gamma_init, name = name)
-        conv_act = None
+        gamma_init = tf.random_normal_initializer(1., 0.02)
+        bn = lambda x, name : BatchNormLayer(x, is_train = is_train, gamma_init = gamma_init, name = name)
     else:
         bn = lambda x, name : x
-        conv_act = tf.nn.relu
-    
-    # deconv or upsampling
-    #if use_dc:
-    #    up = lambda x, out_channel, name : myDeConv2d(x, out_channel, (3, 3), (2, 2), name = name)
-    #else:
-    #    up = lambda x, out_channel, name : UpSampling2dLayer(x, (2, 2), name = name)
-    
+    Act = lambda x, name : ActivationLayer(x, act = tf.nn.relu, name = name)
+        
     # down sampling
     def down(inputs, out_channel, method, name):
         with tf.variable_scope(name):
             if method == 'mean':
                 outputs = MeanPool2d(inputs, (2, 2), name = 'meanpool')
                 outputs = bn(outputs, 'bn')
-                outputs = Conv2d(outputs, out_channel, (1, 1), act=conv_act, name='conv')
+                outputs = Act(outputs, 'act')
+                outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
             elif method == 'max':
                 outputs = MaxPool2d(inputs, (2, 2), name = 'maxpool')
                 outputs = bn(outputs, 'bn')
+                outputs = Act(outputs, 'act')
                 outputs = Conv2d(outputs, out_channel, (1, 1), act=conv_act, name='conv')
             elif method == 'conv':
                 outputs = bn(inputs, 'bn')
+                outputs = Act(outputs, 'act')
                 outputs = Conv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name='conv')
             else:
                 raise Exception('method error')
@@ -63,34 +68,32 @@ def unet(x, is_train = True, reuse = False,
         with tf.variable_scope(name):
             if method == 'deconv':
                 outputs = bn(inputs, 'bn')
-                outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), act=conv_act, name = 'deconv')
+                outputs = Act(outputs, 'act')
+                outputs = myDeConv2d(outputs, out_channel, (3, 3), (2, 2), name = 'deconv')
             elif method == 'upsample':
                 outputs = bn(inputs, 'bn')
-                outputs = Conv2d(outputs, out_channel, (1,1), act=conv_act, name='conv')
+                outputs = Act(outputs, 'act')
+                outputs = Conv2d(outputs, out_channel, (1,1), name='conv')
                 outputs = UpSampling2dLayer(outputs, (2, 2), name = 'upsample')
             else:
                 raise Exception('method error')
         return outputs
-         
-    # dense block
-    def block(inputs, depth, out_channel, name):
-        
-        with tf.variable_scope(name):
-            for i in range(depth):
-                  
-                conv = bn(inputs, 'bn{}_1'.format(i+1))
-                conv = Conv2d(conv, 2 * out_channel, (1, 1), act=conv_act, name='conv{}_1'.format(i+1))
-                
-                conv = bn(conv, 'bn{}_2'.format(i+1))
-                conv = Conv2d(conv, out_channel, (3, 3), act=conv_act, name='conv{}_2'.format(i+1))
-               
-                inputs = ConcatLayer([inputs, conv], 3, 'concat{}'.format(i+1))
-        
-        return inputs
     
-    growth_rate = 12
-    block_depth = 3
 
+         
+
+    block = {}
+    for key in ['center','down','up']:
+        if block_type[key] == 'dense':
+            block[key] = lambda x, i : dense_block(x, dense_depth, growth_rate * abs(i), tf.nn.relu,
+                                                   use_bn, is_train, 'dense_block{}'.format(i))
+        elif block_type[key] == 'res':
+            block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
+                                                     use_bn, is_train, 'res_block{}'.format(i))
+        elif block_type[key] == 'conv':
+            block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
+                                                  use_bn, is_train, 'res_block{}'.format(i))
+            
     with tf.variable_scope("unet", reuse=reuse):
         set_name_reuse(reuse)
         
@@ -101,20 +104,19 @@ def unet(x, is_train = True, reuse = False,
          
         # encode
         encoders = []
-        #downs = []
         for i in xrange(1, num_poolings+1):
-            encoder = block(encoder, block_depth, growth_rate * i, 'dense_block{}'.format(i))
+            encoder = block['down'](encoder, i)
             encoders.append(encoder)
             encoder = down(encoder, growth_rate*i, 'mean', 'down{}'.format(i))
             
         # center connection
-        decoder = block(encoder, block_depth, growth_rate * (num_poolings+1), 'center')
+        decoder = block['center'](encoder, (num_poolings+1))
          
         # decode
-        for i in xrange(1, num_poolings+1):
-            decoder = up(decoder, growth_rate*(num_poolings-i+1), 'upsample', 'up{}'.format(i))
-            decoder = ConcatLayer([decoder, encoders[-i]], 3, name = 'concat{}'.format(i))
-            decoder = block(decoder, block_depth, growth_rate * (num_poolings-i+1), 'dense_block-{}'.format(i))
+        for i in xrange(num_poolings, 0, -1):
+            decoder = up(decoder, growth_rate * i, 'upsample', 'up{}'.format(i))
+            decoder = ConcatLayer([decoder, encoders[i]], 3, name = 'concat{}'.format(i))
+            decoder = block['up'](decoder, i)
          
         # output layer
         outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act, name='output')
