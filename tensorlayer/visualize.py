@@ -526,7 +526,17 @@ def box(data, xlabel = '', ylabel = '', title = '', labels = None, showmeans = T
     plt.title(title)
     plt.show()
 
-
+def errbar(data, x = None, xlabel = '', ylabel = '', title = ''):
+    mean = np.mean(data, axis = 0)
+	std = np.std(data, axis = 0)
+	plt.figure()
+	if x is None:
+	    plt.errorbar(mean, yerr = std)
+    else:
+        plt.errorbar(x, mean, yerr = std)
+	plt.title(title)
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
 
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None):
 	
