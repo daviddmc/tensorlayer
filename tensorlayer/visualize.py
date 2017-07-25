@@ -490,9 +490,14 @@ def bar(mean, std=None,
     opacity = 0.4
     error_kw = dict(capsize = 2, elinewidth = 1)
     for i in range(len(labels)):
-        plt.bar(index*group_width + i*bar_width, mean[:,i], bar_width, 
-                alpha=opacity, color=COLOR[np.mod(i, len(COLOR))],
-                label=labels[i], yerr =std[:,i], error_kw=error_kw)  
+	if std:
+            plt.bar(index*group_width + i*bar_width, mean[:,i], bar_width, 
+                    alpha=opacity, color=COLOR[np.mod(i, len(COLOR))],
+                    label=labels[i], yerr = std[:,i], error_kw=error_kw)
+	else:
+            plt.bar(index*group_width + i*bar_width, mean[:,i], bar_width, 
+                    alpha=opacity, color=COLOR[np.mod(i, len(COLOR))],
+                    label=labels[i], error_kw=error_kw) 
     plt.xlabel(xlabel)  
     plt.ylabel(ylabel)  
     plt.title(title)  
