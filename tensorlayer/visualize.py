@@ -578,7 +578,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			idx = i*layout[1] + j
 			p1 = axes[i, 2*j]
 			p2 = axes[i, 2*j+1]
-			if imgs[idx] is None or idx >= len(imgs):
+			if idx >= len(imgs) or imgs[idx] is None:
 			    p1.set_xticks([])
 			    p1.set_yticks([])
 			    p2.set_xticks([])
