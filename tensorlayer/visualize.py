@@ -620,6 +620,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 					axesA=p2,axesB=p1,color='g')
 			p2.add_artist(con)
 	if use_colorbar:
+	    pass
 	    #fig.subplots_adjust(right=0.8)
             #cbar_ax = fig.add_axes([0.9, 0.15, 0.05, 0.7])
 	    #fig.colorbar(im, cax=cbar_ax)
