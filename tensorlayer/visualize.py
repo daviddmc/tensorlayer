@@ -596,7 +596,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			#arrow
 			if arrow_from is not None and arrow_to is not None:
 			    p2.annotate('',xy = arrow_to, xytext = arrow_to,
-					arrowprops=dict(arrowstyle="->",connectionstyle="arc3"))
+					arrowprops=dict(arrowstyle="->",connectionstyle="arc3",color='r'))
 
 			p1.set_title(titles[idx])
 
