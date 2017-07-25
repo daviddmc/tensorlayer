@@ -1204,11 +1204,11 @@ def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_ex
     
     data[data < 0] = 0
     
-    filenames = os.listdir(path)
+    filenames = os.listdir(path_old)
     filenames = [x for x in sorted(filenames,key =  filename2key) if x.endswith(dicom_extension)]
     
     for filename in filenames:
-        dicom_data = dicom.read_file(os.path.join(path, filename))
+        dicom_data = dicom.read_file(os.path.join(path_old, filename))
         idx = filename2key(filename) - begin_slice
         if idx >= 0 and idx < data.shape[0]:
             slice_data = data[idx]
