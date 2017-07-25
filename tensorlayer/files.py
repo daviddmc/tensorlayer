@@ -1216,7 +1216,7 @@ def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_ex
             if rescale:
                 rescale_slope = np.max(slice_data) / 32767
                 rescale_intercept = 0
-                slice_data = slice_data / rescale_slope * 32767
+                slice_data = (slice_data - rescale_intercept) / rescale_slope
                 slice_data = slice_data.astype(np.int16)
                 try:
                     dicom_data.RescaleSlope = str(rescale_slope)
