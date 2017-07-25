@@ -6098,7 +6098,7 @@ def DownSampling2D(inputs, scale = 2, out_channel = None, method = 'max',
 					    name = name)
     else:
 	BN = lambda x, name: x
-    Act = lambda x, name: act(x, name = name)    
+    Act = lambda x, name: ActivationLayer(x, act = act, name = name)    
 
     with tf.variable_scope(name):
             if method == 'mean':
@@ -6142,7 +6142,7 @@ def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample',
 					    name = name)
     else:
 	BN = lambda x, name: x
-    Act = lambda x, name: act(x, name = name)
+    Act = lambda x, name: ActivationLayer(x, act = act, name = name)
 
     with tf.variable_scope(name):
             if method == 'deconv':
