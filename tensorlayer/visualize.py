@@ -557,7 +557,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
         plt.show()
 
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=None, titles = None,
-		    mask = None, clim = None, save_path = None):
+		    mask = None, clim = None, arrow_from = None, arrow_to = None, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
@@ -592,6 +592,11 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			p2.set_xticks([])
 			p2.set_yticks([])
 			p2.get_images()[0].set_clim(clim)
+			
+			#arrow
+			if arrow_from is not None and arrow_to is not None:
+			    p2.annotate('',xy = arrow_to, xytext = arrow_to,
+					arrowprops=dict(arrowstyle="->",connectionstyle="arc3"))
 
 			p1.set_title(titles[idx])
 
