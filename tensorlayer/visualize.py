@@ -624,7 +624,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 					axesA=p2,axesB=p1,color='g')
 			p2.add_artist(con)
 	if use_colorbar:
-	    fig.colorbar(im, ax=axes.ravel().tolist())
+	    fig.colorbar(im, ax=[a for a in axes if a is not None])
 	else:
 	    plt.tight_layout()
 	if save_path is not None:
