@@ -626,8 +626,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			p2.add_artist(con)
 	if use_colorbar:
 	    pass
-	    fig.subplots_adjust(right=0.9)
-            cbar_ax = fig.add_axes([0.92, 0.15, 0.03, 0.7])
+	    fig.subplots_adjust(right=0.85)
+            cbar_ax = fig.add_axes([0.87, 0.15, 0.03, 0.7])
 	    fig.colorbar(im, cax=cbar_ax)
 	else:
 	    plt.tight_layout()
