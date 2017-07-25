@@ -559,6 +559,14 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=None, titles = None,
 		    mask = None, clim = None, arrow_from = None, arrow_to = None, use_colorbar = False, save_path = None):
 	
+	def clean_spine(ax):
+	    ax.set_xticks([])
+	    ax.set_yticks([])
+	    ax.spines['top'].set_visible(False)  
+            ax.spines['right'].set_visible(False)  
+	    ax.spines['bottom'].set_visible(False)  
+	    ax.spines['left'].set_visible(False)  
+	
 	if type(imgs) is not list:
 		imgs = [imgs]
 		
@@ -579,19 +587,15 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			p1 = axes[i, 2*j]
 			p2 = axes[i, 2*j+1]
 			if idx >= len(imgs) or imgs[idx] is None:
-			    p1.set_xticks([])
-			    p1.set_yticks([])
-			    p2.set_xticks([])
-			    p2.set_yticks([])
+			    clean_spine(p1)
+			    clean_spine(p2)
 		            continue
                         
 			im = p1.imshow(imgs[idx], cmap=cmap)
-			p1.set_xticks([])
-			p1.set_yticks([])
+			clean_spine(p1)
 			p1.get_images()[0].set_clim(clim)
 			p2.imshow(imgs[idx][start[0]:start[0]+size[0], start[1]:start[1]+size[1]], cmap=cmap)
-			p2.set_xticks([])
-			p2.set_yticks([])
+			clean_spine(p2)
 			p2.get_images()[0].set_clim(clim)
 			
 			#arrow
