@@ -588,9 +588,11 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 			p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
+			p1.set_clim((0,1))
 			p2.imshow(imgs[idx][start[0]:start[0]+size[0], start[1]:start[1]+size[1]], cmap=cmap)
 			p2.set_xticks([])
 			p2.set_yticks([])
+			p1.set_clim((0,1))
 
 			p1.set_title(titles[idx])
 
