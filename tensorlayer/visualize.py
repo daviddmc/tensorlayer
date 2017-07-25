@@ -571,7 +571,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 	if mask is not None:
 		imgs = [img * mask if img else None for img in imgs]
 
-	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2, subplot_kw = {'aspect':1})#, sharex = 'col', sharey='col')
+	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2, subplot_kw = {'aspect':1}), sharex = 'col', sharey='col')
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			
@@ -621,7 +621,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			p2.add_artist(con)
 	if use_colorbar:
 	    fig.subplots_adjust(right=0.8)
-            cbar_ax = fig.add_axes([0.85, 0.2, 0.1, 0.7])
+            cbar_ax = fig.add_axes(0.1)
 	    fig.colorbar(im, cax=cbar_ax)
 	else:
 	    plt.tight_layout()
