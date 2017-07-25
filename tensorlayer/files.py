@@ -1208,6 +1208,7 @@ def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_ex
     filenames = [x for x in sorted(filenames,key =  filename2key) if x.endswith(dicom_extension)]
     
     for filename in filenames:
+        print('processing {}'.format(filename))
         dicom_data = dicom.read_file(os.path.join(path_old, filename))
         idx = filename2key(filename) - begin_slice
         if idx >= 0 and idx < data.shape[0]:
@@ -1223,4 +1224,5 @@ def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_ex
                 except:
                     print("can not rescale data")
             dicom_data.PixelData = slice_data.tostring()
+        print('save to {}'.format(os.path.join(path_new, filename)))
         dicom_data.save_as(os.path.join(path_new, filename))
