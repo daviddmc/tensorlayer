@@ -6150,7 +6150,7 @@ def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample',
 		    out_channel = inputs.outputs.get_shape().as_list()[-1]
 		if not BAC:
 		    inputs = myDeConv2d(inputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
-                outputs = bn(inputs, 'bn')
+                outputs = BN(inputs, 'bn')
                 outputs = Act(outputs, 'act')
 		if BAC:
                     outputs = myDeConv2d(outputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
@@ -6158,7 +6158,7 @@ def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample',
 		if out_channel is not None:
 		    if not BAC:
 		        inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
-                    inputs = bn(inputs, 'bn')
+                    inputs = BN(inputs, 'bn')
                     inputs = Act(inputs, 'act')
 		    if BAC:
                         inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
