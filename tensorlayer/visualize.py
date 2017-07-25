@@ -572,7 +572,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 		imgs = [img * mask if img else None for img in imgs]
 
 	#fig = plt.figure()
-	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2)
+	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2, subplot_kw = {'aspect':1})
+	axes = axes.ravel().tolist()
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			
@@ -580,16 +581,11 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			if idx >= len(imgs):
 			    continue
 			if imgs[idx] is None:
-			    p1.set_xticks([])
-			    p1.set_yticks([])
-			    p2.set_xticks([])
-			    p2.set_yticks([])
+			    axes[2*idx] = None
+			    axes[2*idx + 1] = None
 		            continue
-			
-			#p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
-			#p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
-                        p1 = axes[i, 2*j]
-			p2 = axes[i, 2*j+1]
+                        p1 = axes[2*idx]
+			p2 = axes[2*idx + 1]
 			im = p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
