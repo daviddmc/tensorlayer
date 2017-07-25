@@ -556,7 +556,8 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
     else:
         plt.show()
 
-def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None, mask = None, save_path = None):
+def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None,
+		    mask = None, clim = None, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
@@ -573,12 +574,14 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 		titles = [''] * len(imgs)
 	
 	if mask is not None:
-		imgs = [img * mask for img in imgs]
+		imgs = [img * mask if img else None for img in imgs]
 
 	plt.figure()
 	
 	for i in range(layout[0]):
 		for j in range(layout[1]):
+			if img is None:
+		            continue
 			idx = i*layout[1] + j
 			if idx >= len(imgs):
 				continue
@@ -588,11 +591,11 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 			p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
-			p1.get_images()[0].set_clim((0,1))
+			p1.get_images()[0].set_clim(clim)
 			p2.imshow(imgs[idx][start[0]:start[0]+size[0], start[1]:start[1]+size[1]], cmap=cmap)
 			p2.set_xticks([])
 			p2.set_yticks([])
-			p2.get_images()[0].set_clim((0,1))
+			p2.get_images()[0].set_clim(clim)
 
 			p1.set_title(titles[idx])
 
