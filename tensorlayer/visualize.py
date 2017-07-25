@@ -556,17 +556,12 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
     else:
         plt.show()
 
-def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None, titles = None,
+def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=None, titles = None,
 		    mask = None, clim = None, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
-	
-	if size is None:
-		size = (imgs[0].shape[0]//2, imgs[0].shape[1]//2)
-	assert start[0] >= 0 and start[1] >= 0 and size[0] > 0 and size[1] > 0
-	assert start[0] + size[0] <= imgs[0].shape[0] and start[1] + size[1] <= imgs[0].shape[1]
-
+		
 	if layout is None:
 		layout = (1, len(imgs))
 	
@@ -584,7 +579,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = None, cmap=None,
 		            continue
 			idx = i*layout[1] + j
 			if idx >= len(imgs):
-				continue
+			    continue
 			p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
 			p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
 
