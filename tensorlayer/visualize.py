@@ -578,10 +578,15 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			idx = i*layout[1] + j
 			if idx >= len(imgs):
 			    continue
-			if imgs[idx] is None:
-		            continue
-                        p1 = axes[i, 2*j]
+			p1 = axes[i, 2*j]
 			p2 = axes[i, 2*j+1]
+			if imgs[idx] is None:
+			    p1.set_xticks([])
+			    p1.set_yticks([])
+			    p2.set_xticks([])
+			    p2.set_yticks([])
+		            continue
+                        
 			im = p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
@@ -621,9 +626,9 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			p2.add_artist(con)
 	if use_colorbar:
 	    pass
-	    #fig.subplots_adjust(right=0.8)
-            #cbar_ax = fig.add_axes([0.9, 0.15, 0.05, 0.7])
-	    #fig.colorbar(im, cax=cbar_ax)
+	    fig.subplots_adjust(right=0.9)
+            cbar_ax = fig.add_axes([0.92, 0.15, 0.03, 0.7])
+	    fig.colorbar(im, cax=cbar_ax)
 	else:
 	    plt.tight_layout()
 	if save_path is not None:
