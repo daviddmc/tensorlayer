@@ -621,7 +621,7 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			con = ConnectionPatch(xyA=xy2,xyB=xy,coordsA="data",coordsB="data",
 					axesA=p2,axesB=p1,color='g')
 			p2.add_artist(con)
-	#plt.clim(0,1)
+	plt.colorbar()
 	plt.tight_layout()
 	if save_path is not None:
             plt.savefig(save_path, bbox_inches='tight')   
