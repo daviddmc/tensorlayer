@@ -569,8 +569,6 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 		titles = [''] * len(imgs)
 	
 	if mask is not None:
-		for img in imgs:
-		
 		imgs = [((img * mask) if img is not None else None) for img in imgs]
 
 	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2, subplot_kw = {'aspect':1})#, sharex = 'col', sharey='col')
