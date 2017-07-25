@@ -629,7 +629,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 	    fig.subplots_adjust(right=0.85)
             cbar_ax = fig.add_axes([0.87, 0.15, 0.03, 0.7])
 	    fig.colorbar(im, cax=cbar_ax)
-	plt.tight_layout()
+	else:
+	    plt.tight_layout()
 	if save_path is not None:
             plt.savefig(save_path, bbox_inches='tight')   
         else:
