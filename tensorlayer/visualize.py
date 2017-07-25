@@ -583,8 +583,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 		            continue
 			#p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
 			#p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
-                        p1 = axes[idx*2]
-			p2 = axes[idx*2+1]
+                        p1 = axes[i, 2*j]
+			p2 = axes[i, 2*j+1]
 			im = p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
