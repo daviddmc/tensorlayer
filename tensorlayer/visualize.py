@@ -557,7 +557,7 @@ def errbar(data, x = None, xlabel = '', ylabel = '', title = '', color = 'b', ca
         plt.show()
 
 def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=None, titles = None,
-		    mask = None, clim = None, arrow_from = None, arrow_to = None, save_path = None):
+		    mask = None, clim = None, arrow_from = None, arrow_to = None, use_colorbar = False, save_path = None):
 	
 	if type(imgs) is not list:
 		imgs = [imgs]
@@ -571,8 +571,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 	if mask is not None:
 		imgs = [img * mask if img else None for img in imgs]
 
-	plt.figure()
-	
+	#fig = plt.figure()
+	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2)
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			
@@ -581,10 +581,11 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			    continue
 			if imgs[idx] is None:
 		            continue
-			p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
-			p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
-
-			p1.imshow(imgs[idx], cmap=cmap)
+			#p1 = plt.subplot(layout[0], layout[1]*2, 2*idx+1, aspect=1)
+			#p2 = plt.subplot(layout[0], layout[1]*2, 2*idx+2, aspect=1)
+                        p1 = axes[idx*2]
+			p2 = axes[idx*2+1]
+			im = p1.imshow(imgs[idx], cmap=cmap)
 			p1.set_xticks([])
 			p1.set_yticks([])
 			p1.get_images()[0].set_clim(clim)
@@ -621,7 +622,8 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 			con = ConnectionPatch(xyA=xy2,xyB=xy,coordsA="data",coordsB="data",
 					axesA=p2,axesB=p1,color='g')
 			p2.add_artist(con)
-	plt.colorbar()
+	if use_colorbar:
+	    fig.colorbar(im, ax=axes.ravel().tolist())
 	plt.tight_layout()
 	if save_path is not None:
             plt.savefig(save_path, bbox_inches='tight')   
