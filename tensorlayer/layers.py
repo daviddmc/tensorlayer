@@ -6030,7 +6030,7 @@ def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, 
     Act = lambda x, name: ActivationLayer(x, act = act, name = name)
     for i in range(1, num_block + 1):	
     	with tf.variable_scope(name + '_{}'.format(i)):
-            in_channel = inputs.get_shape().as_list()[-1]
+            in_channel = inputs.outputs.get_shape().as_list()[-1]
 
 	    conv = Conv(inputs, 'conv1')
 	    conv = BN(conv, 'bn1')
