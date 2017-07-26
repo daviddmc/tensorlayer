@@ -728,7 +728,7 @@ def ms_ssim_loss(img1, img2, inputs = None, is_mean=False, level=5):
         img2 = img2 - inputs
     
     for l in range(level):
-        l_map, cs_map = tf_ssim(img1, img2, inputs, cs_map=True, is_mean=False)
+        l_map, cs_map = ssim_loss(img1, img2, None, cs_map=True, is_mean=False)
         ml.append(l_map)
         mcs.append(cs_map)
         filtered_im1 = tf.nn.avg_pool(img1, [1,2,2,1], [1,2,2,1], padding='SAME')
