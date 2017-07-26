@@ -657,7 +657,7 @@ def l1_loss(output, target, is_mean=False, weight = None):
                 l1 = tf.reduce_mean(tf.reduce_sum(abs_diff, [1, 2, 3]))
         return l1
 
-def ssim_loss(output, target, inputs = None, is_mean = False, size = 11, sigma = 1.5):
+def ssim_loss(output, target, inputs = None, is_mean = False, size = 11, sigma = 1.5, cs_map = False):
     """Return the expresson of ssim loss of two image (batch).
     
     Parameters
@@ -707,11 +707,47 @@ def ssim_loss(output, target, inputs = None, is_mean = False, size = 11, sigma =
         sigma1_sq = tf.nn.conv2d(output*output, window, strides=[1,1,1,1],padding='VALID') - mu1_sq
         sigma2_sq = tf.nn.conv2d(target*target, window, strides=[1,1,1,1],padding='VALID') - mu2_sq
         sigma12 = tf.nn.conv2d(output*target, window, strides=[1,1,1,1],padding='VALID') - mu1_mu2
-        value = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
+        if cs_map:
+            value = ((2*mu1_mu2 + C1)/(mu1_sq + mu2_sq + C1), (2.0*sigma12 + C2)/(sigma1_sq + sigma2_sq + C2))
+            return value
+        else:
+            value = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
         if is_mean:
             loss = tf.reduce_mean(tf.reduce_mean(1 - value, [1, 2, 3]))
         else:
             loss = tf.reduce_mean(tf.reduce_sum(1 - value, [1, 2, 3]))
+    return loss
+
+def ms_ssim_loss(img1, img2, inputs = None, is_mean=False, level=5):
+    weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
+    ml = []
+    mcs = []
+    
+    if inputs is not None:
+        img1 = img1 - inputs
+        img2 = img2 - inputs
+    
+    for l in range(level):
+        l_map, cs_map = tf_ssim(img1, img2, inputs, cs_map=True, is_mean=False)
+        ml.append(l_map)
+        mcs.append(cs_map)
+        filtered_im1 = tf.nn.avg_pool(img1, [1,2,2,1], [1,2,2,1], padding='SAME')
+        filtered_im2 = tf.nn.avg_pool(img2, [1,2,2,1], [1,2,2,1], padding='SAME')
+        img1 = filtered_im1
+        img2 = filtered_im2
+
+    # list to tensor of dim D+1
+    ml = tf.stack(ml, axis=0)
+    mcs = tf.stack(mcs, axis=0)
+
+    value = (tf.reduce_prod(mcs**weight, axis = 0)*
+                            (ml[level-1]**weight[level-1]))
+
+    if is_mean:
+        loss = tf.reduce_mean(tf.reduce_mean(1 - value, [1, 2, 3]))
+    else:
+        loss = tf.reduce_mean(tf.reduce_sum(1 - value, [1, 2, 3]))
+        
     return loss
 
 def ls_adversarial_loss(G_out, D_out_fake, D_out_real):
