@@ -717,5 +717,59 @@ def plot_image_profile(imgs, layout = None,  orientation = 'v', position = None,
 		plt.xlabel('position')
 		plt.ylabel('intensity')
 		plt.show()
-    
+		
+def plot_image(imgs, layout = None, cmap=None, titles = None,
+	       mask = None, clim = None, arrow_from = None, arrow_to = None, use_colorbar = False, save_path = None):
+	
+	def clean_spine(ax):
+	    ax.set_xticks([])
+	    ax.set_yticks([])
+	    ax.spines['top'].set_visible(False)  
+            ax.spines['right'].set_visible(False)  
+	    ax.spines['bottom'].set_visible(False)  
+	    ax.spines['left'].set_visible(False)  
+	
+	if type(imgs) is not list:
+		imgs = [imgs]
+		
+	if layout is None:
+		layout = (1, len(imgs))
+	
+	if titles is None:
+		titles = [''] * len(imgs)
+	
+	if mask is not None:
+		imgs = [((img * mask) if img is not None else None) for img in imgs]
+
+	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1], subplot_kw = {'aspect':1})
+	for i in range(layout[0]):
+		for j in range(layout[1]):
+			
+			idx = i*layout[1] + j
+			p = axes[i, j]
+			if idx >= len(imgs) or imgs[idx] is None:
+			    clean_spine(p)
+		            continue
+                        
+			im = p.imshow(imgs[idx], cmap=cmap)
+			clean_spine(p)
+			p1.get_images()[0].set_clim(clim)
+			
+			#arrow
+			if arrow_from is not None and arrow_to is not None:
+			    p.annotate('',xy = arrow_to, xytext = arrow_from,
+				       arrowprops=dict(arrowstyle="->",connectionstyle="arc3",color='r'))
+
+			p.set_title(titles[idx])
+
+	if use_colorbar:
+	    fig.subplots_adjust(right=0.85)
+            cbar_ax = fig.add_axes([0.87, 0.15, 0.03, 0.7])
+	    fig.colorbar(im, cax=cbar_ax)
+	else:
+	    plt.tight_layout()
+	if save_path is not None:
+            plt.savefig(save_path, bbox_inches='tight')   
+        else:
+            plt.show()    
 #
