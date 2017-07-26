@@ -755,7 +755,7 @@ def plot_image(imgs, layout = None, cmap=None, titles = None,
                         
 			im = p.imshow(imgs[idx], cmap=cmap)
 			clean_spine(p)
-			p1.get_images()[0].set_clim(clim)
+			p.get_images()[0].set_clim(clim)
 			
 			#arrow
 			if arrow_from is not None and arrow_to is not None:
