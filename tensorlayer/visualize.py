@@ -580,12 +580,13 @@ def plot_image_zoom(imgs, layout = None,  start = (0,0), size = (50, 50), cmap=N
 		imgs = [((img * mask) if img is not None else None) for img in imgs]
 
 	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1]*2, subplot_kw = {'aspect':1})#, sharex = 'col', sharey='col')
+	axes = axes.ravel().to_list()
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			
 			idx = i*layout[1] + j
-			p1 = axes[i, 2*j]
-			p2 = axes[i, 2*j+1]
+			p1 = axes[2*idx]
+			p2 = axes[2*idx+1]
 			if idx >= len(imgs) or imgs[idx] is None:
 			    clean_spine(p1)
 			    clean_spine(p2)
@@ -742,11 +743,12 @@ def plot_image(imgs, layout = None, cmap=None, titles = None,
 		imgs = [((img * mask) if img is not None else None) for img in imgs]
 
 	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1], subplot_kw = {'aspect':1})
+	axes = axes.ravel().to_list()
 	for i in range(layout[0]):
 		for j in range(layout[1]):
 			
 			idx = i*layout[1] + j
-			p = axes[i, j]
+			p = axes[idx]
 			if idx >= len(imgs) or imgs[idx] is None:
 			    clean_spine(p)
 		            continue
