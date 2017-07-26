@@ -718,8 +718,8 @@ def ssim_loss(output, target, inputs = None, is_mean = False, size = 11, sigma =
             loss = tf.reduce_mean(tf.reduce_sum(1 - value, [1, 2, 3]))
     return loss
 
-def ms_ssim_loss(img1, img2, inputs = None, is_mean=False, level=5):
-    weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
+def ms_ssim_loss(img1, img2, inputs = None, is_mean=False, level=5, is_weight = False):
+   
     ml = []
     mcs = []
     
@@ -739,9 +739,12 @@ def ms_ssim_loss(img1, img2, inputs = None, is_mean=False, level=5):
     # list to tensor of dim D+1
     ml = tf.stack(ml, axis=0)
     mcs = tf.stack(mcs, axis=0)
-
-    value = (tf.reduce_prod(mcs**weight, axis = 0)*
-                            (ml[level-1]**weight[level-1]))
+    
+    if is_weight:
+        weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
+        value = (tf.reduce_prod(mcs**weight, axis = 0)*(ml[level-1]**weight[level-1]))
+    else:
+        value = (tf.reduce_prod(mcs, axis = 0) * ml[level-1])
 
     if is_mean:
         loss = tf.reduce_mean(tf.reduce_mean(1 - value, [1, 2, 3]))
