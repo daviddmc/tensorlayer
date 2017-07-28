@@ -765,13 +765,13 @@ def plot_image(imgs, layout = None, cmap=None, titles = None,
 			p.set_title(titles[idx])
 
 	if use_colorbar:
-	    fig.subplots_adjust(right=0.85)
+	    fig.subplots_adjust(right=0.85, wspace=0.0001, hspace=0.0001)
             cbar_ax = fig.add_axes([0.87, 0.15, 0.03, 0.7])
 	    fig.colorbar(im, cax=cbar_ax)
 	else:
-	    plt.tight_layout()
+	    plt.tight_layout(pad=0, w_pad=0, h_pad = 0)
 	if save_path is not None:
-            plt.savefig(save_path, bbox_inches='tight')   
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')   
         else:
             plt.show()    
 #
