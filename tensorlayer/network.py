@@ -260,6 +260,7 @@ def unet_old(x, is_train = True, reuse = False,
          num_channel_out = 1, num_channel_first = 32, 
          num_conv_per_pooling = 2, num_poolings = 3, 
          use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False, in_res = False,
+         use_selu = False,
          act = tf.tanh):
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
@@ -285,7 +286,10 @@ def unet_old(x, is_train = True, reuse = False,
         conv_act = None
     else:
         bn = lambda x, name : x
-        conv_act = tf.nn.relu
+        if use_selu:
+            conv_act = tl.activation.selu
+        else:
+            conv_act = tf.nn.relu
     
     # deconv or upsampling
     if use_dc:
