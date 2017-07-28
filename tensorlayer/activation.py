@@ -107,3 +107,10 @@ def pixel_wise_softmax(output, name='pixel_wise_softmax'):
         # else:
         #     raise Exception("output parameters should be 2d or 3d image, not %s" % str(output._shape))
         # return tf.div(exp_map, evidence)
+
+# My code
+def selu(x, name = 'selu'):
+    with tf.name_scope(name) as scope:
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+    return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
