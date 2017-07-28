@@ -743,7 +743,7 @@ def plot_image(imgs, layout = None, cmap=None, titles = None,
 		imgs = [((img * mask) if img is not None else None) for img in imgs]
 
 	fig, axes = plt.subplots(nrows=layout[0], ncols=layout[1], subplot_kw = {'aspect':1}, 
-				 figsize=(layout[0]*2, layout[1]*2))
+				 figsize=(layout[1]*2, layout[0]*2))
 	axes = axes.ravel().tolist()
 	for i in range(layout[0]):
 		for j in range(layout[1]):
