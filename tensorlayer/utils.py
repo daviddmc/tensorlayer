@@ -551,13 +551,6 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
     g_loss_keys = G_loss_dict.keys()
     d_loss_keys = d_loss_dict.keys()
     loss_keys = g_loss_keys + d_loss_keys
-
-    if len(G_loss_dict) > 1:
-        G_loss_dict.update({'g_loss': sum(e for k,e in g_loss_dict.items())})
-        g_loss_keys.insert(0, 'g_loss')
-    if len(D_loss_dict) > 1:
-        D_loss_dict.update({'d_loss': sum(e for k,e in d_loss_dict.items())})
-        d_loss_keys.insert(0, 'd_loss')
         
     G_dict = {'train_op': train_G}.update(G_loss_dict)
     D_dict = {'train_op': train_D}.update(D_loss_dict)
