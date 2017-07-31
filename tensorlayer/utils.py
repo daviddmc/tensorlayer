@@ -589,7 +589,8 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
      
     for epoch in range(ep_continue, n_epoch):
         start_time = time.time()
-        loss_dict[k].append(0) for k in loss_keys 
+        for k in loss_keys:
+            loss_dict[k].append(0)
         n_step = 0
         for X_train_a, y_train_a in iterate.minibatches(X_train, y_train, batch_size, shuffle=True):
             feed_dict = {x: X_train_a, y_: y_train_a}
@@ -597,12 +598,13 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
             d_dict = sess.run(D_dict, feed_dict)
             ## update G
             g_dict = sess.run(G_dict, feed_dict)
-            
-            (loss_dict[k][-1] += g_dict[k]) for k in g_loss_keys
-            (loss_dict[k][-1] += d_dict[k]) for k in d_loss_keys
+            for k in g_loss_keys:
+                loss_dict[k][-1] += g_dict[k]
+            for k in d_loss_keys:
+                loss_dict[k][-1] += d_dict[k]
             n_step += 1
-        
-        (loss_dict[k][-1] /= n_step) for k in loss_keys
+        for k in loss_keys:
+            loss_dict[k][-1] /= n_step
     
         if decay_period and ((epoch+1) % decay_period == 0):
             new_lr_decay = decay_rate ** ((epoch+1) // decay_period)
