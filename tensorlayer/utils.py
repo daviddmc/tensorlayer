@@ -548,6 +548,20 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
             X_val = None, y_val = None, eval_fn = None, eval_freq = 30, 
             save_freq = 5, save_path = None):
     
+    g_loss_keys = G_loss_dict.keys()
+    d_loss_keys = d_loss_dict.keys()
+    loss_keys = g_loss_keys + d_loss_keys
+
+    if len(G_loss_dict) > 1:
+        G_loss_dict.update({'g_loss': sum(e for k,e in g_loss_dict.items())})
+        g_loss_keys.insert(0, 'g_loss')
+    if len(D_loss_dict) > 1:
+        D_loss_dict.update({'d_loss': sum(e for k,e in d_loss_dict.items())})
+        d_loss_keys.insert(0, 'd_loss')
+        
+    G_dict = {'train_op': train_G, **G_loss_dict}
+    D_dict = {'train_op': train_D, **D_loss_dict}
+
     assert X_train.shape[0] >= batch_size, "Number of training examples should be bigger than the batch size"
     
     if decay_period is not None:
@@ -563,8 +577,7 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
     if ep_continue:
         print('continue to train ep{}'.format(ep_continue))
         loss_record = np.load(os.path.join(save_path, 'loss.npz'))
-        loss_g_list = loss_record['loss_g'].tolist()
-        loss_d_list = loss_record['loss_d'].tolist()
+        loss_dict = {k:e.tolist() for k,e in loss_record.items()}
         sess.run(tf.assign(global_step, ep_continue * (X_train.shape[0] // batch_size) ))
         print('continue step {}'.format(ep_continue * (X_train.shape[0] // batch_size)))
         if decay_period:
@@ -572,12 +585,12 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
             sess.run(tf.assign(lr_var, max(lr_init * new_lr_decay, lr_min)))
             print(" ** continue learning rate: %f " % (lr_init * new_lr_decay))
     else:
-        loss_g_list = []
-        loss_d_list = []
-    
+        loss_dict = {k:[] for k in loss_keys}
+     
     for epoch in range(ep_continue, n_epoch):
         start_time = time.time()
-        g_loss_ep = 0; d_loss_ep=0; n_step = 0
+        loss_dict[k].append(0) for k in loss_keys 
+        n_step = 0
         for X_train_a, y_train_a in iterate.minibatches(X_train, y_train, batch_size, shuffle=True):
             feed_dict = {x: X_train_a, y_: y_train_a}
             ## update D
@@ -585,13 +598,11 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
             ## update G
             g_dict = sess.run(G_dict, feed_dict)
             
-            g_loss_ep += g_dict['g_loss']
-            d_loss_ep += d_loss['d_loss']
+            (loss_dict[k][-1] += g_dict[k]) for k in g_loss_keys
+            (loss_dict[k][-1] += d_dict[k]) for k in d_loss_keys
             n_step += 1
-        g_loss_ep = g_loss_ep/ n_step
-        loss_g_list.append(g_loss_ep)
-        d_loss_ep = d_loss_ep/ n_step
-        loss_d_list.append(d_loss_ep)
+        
+        (loss_dict[k][-1] /= n_step) for k in loss_keys
     
         if decay_period and ((epoch+1) % decay_period == 0):
             new_lr_decay = decay_rate ** ((epoch+1) // decay_period)
@@ -600,8 +611,8 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
 
         if epoch + 1 == 1 or (epoch + 1) % print_freq == 0:
             print("Epoch %d of %d took %fs" % (epoch + 1, n_epoch, time.time() - start_time))
-            print("   epoch G loss: %f" % (g_loss_ep))
-            print("   epoch D loss: %f" % (d_loss_ep))
+            print("    " + sum("%s : %f".format(k,loss_dict[k][-1]) for k in g_loss_keys))
+            print("    " + sum("%s : %f".format(k,loss_dict[k][-1]) for k in d_loss_keys))
         
         if (epoch + 1) % eval_freq == 0:
             print("evaluation")
@@ -613,8 +624,7 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
                 tl.files.save_npz(D.all_params, name = os.path.join(save_path,'d_ep{0}.npz'.format(epoch + 1)), sess=sess)
     
     if save_path is not None:
-        np.savez(os.path.join(save_path, 'loss.npz'), 
-                 loss_g = loss_g_list, loss_d = loss_d_list)
+        np.savez(os.path.join(save_path, 'loss.npz'), **loss_dict)
 
     print("Total training time: %fs" % (time.time() - start_time_begin))
 
