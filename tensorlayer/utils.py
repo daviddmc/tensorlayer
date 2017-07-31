@@ -606,8 +606,8 @@ def fit_gan(sess, G, D, train_G, train_D,
 
         if epoch + 1 == 1 or (epoch + 1) % print_freq == 0:
             print("Epoch %d of %d took %fs" % (epoch + 1, n_epoch, time.time() - start_time))
-            print("    " + ''.join("{} : {}".format(k,loss_dict[k][-1]) for k in g_loss_keys))
-            print("    " + ''.join("{} : {}".format(k,loss_dict[k][-1]) for k in d_loss_keys))
+            print("    " + ' '.join("{} : {}".format(k,loss_dict[k][-1]) for k in g_loss_keys))
+            print("    " + ' '.join("{} : {}".format(k,loss_dict[k][-1]) for k in d_loss_keys))
         
         if (epoch + 1) % eval_freq == 0:
             print("evaluation")
