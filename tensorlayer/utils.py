@@ -540,7 +540,7 @@ def get_random_int(min=0, max=10, number=5, seed=None):
 #     # print(X_train.shape, len(y_train))
 #     return X_train, np.asarray(y_train)
 
-def fit_gan(sess, G, G_test, D, train_G, train_D, 
+def fit_gan(sess, G, D, train_G, train_D, 
             G_loss_dict, D_loss_dict,
             X_train, y_train, x, y_,
             lr_init = 0.001, lr_var = None, decay_rate = 0.1, decay_period = None, lr_min = 0.00001, global_step = None,
@@ -549,11 +549,11 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
             save_freq = 5, save_path = None):
     
     g_loss_keys = G_loss_dict.keys()
-    d_loss_keys = d_loss_dict.keys()
+    d_loss_keys = D_loss_dict.keys()
     loss_keys = g_loss_keys + d_loss_keys
         
-    G_dict = {'train_op': train_G}.update(G_loss_dict)
-    D_dict = {'train_op': train_D}.update(D_loss_dict)
+    G_dict = dict(train_op = train_G, **G_loss_dict)
+    D_dict = dict(train_op = train_D, **D_loss_dict)
 
     assert X_train.shape[0] >= batch_size, "Number of training examples should be bigger than the batch size"
     
@@ -606,8 +606,8 @@ def fit_gan(sess, G, G_test, D, train_G, train_D,
 
         if epoch + 1 == 1 or (epoch + 1) % print_freq == 0:
             print("Epoch %d of %d took %fs" % (epoch + 1, n_epoch, time.time() - start_time))
-            print("    " + sum("%s : %f".format(k,loss_dict[k][-1]) for k in g_loss_keys))
-            print("    " + sum("%s : %f".format(k,loss_dict[k][-1]) for k in d_loss_keys))
+            print("    " + ''.join("{} : {}".format(k,loss_dict[k][-1]) for k in g_loss_keys))
+            print("    " + ''.join("{} : {}".format(k,loss_dict[k][-1]) for k in d_loss_keys))
         
         if (epoch + 1) % eval_freq == 0:
             print("evaluation")
