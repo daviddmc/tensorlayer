@@ -1180,7 +1180,7 @@ def loadDataFromDicom(dir_or_list, key):
 
 import re
 
-def LoadDicom(path, rescale = True, dicom_extension = '',
+def LoadDicom(path, rescale = True, dicom_extension = '', spatial_info = False,
               filename2key = lambda x: int(re.search(r'\d+', x.split('_sl')[-1]).group())):
 
     filenames = os.listdir(path)
@@ -1197,6 +1197,15 @@ def LoadDicom(path, rescale = True, dicom_extension = '',
             except:
                 print("can not rescale data")
         data.append(array)
+
+    if spatial_info:
+        dicom_data = dicom.read_file(os.path.join(path, filenames[0]))
+        sp = {}
+        sp['x'], sp['y'], sp['z'] = [float(s) for s in dicom_data[(0x20, 0x32)].value]
+        sp['sx'], sp['sy'] = [float(s) for s in dicom_data[(0x28, 0x30)].value]
+        sp['t'] = float(dicom_data[(0x18,0x50)].value)
+        return np.asarray(data), sp
+
     return np.asarray(data)
 
 def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_extension = '', 
