@@ -30,6 +30,8 @@ from skimage import transform
 from skimage import exposure
 import skimage
 
+import SimpleITK as sitk
+
 # linalg https://docs.scipy.org/doc/scipy/reference/linalg.html
 # ndimage https://docs.scipy.org/doc/scipy/reference/ndimage.html
 
@@ -1630,7 +1632,30 @@ def random_crop_image(image, crop_size, crop_num, seed=None):
         images_cropped.append(tf.random_crop(image, crop_size + image.get_shape().as_list()[-1:], seed))
     return tf.stack(images_cropped, axis = 0)
     
+def DicomAffineRegister(path_input, path_template, path_output = None, scale_max = 0.0, scale_min = 0.0, tag_modality = ''):
+    # read input
+    reader = sitk.ImageSeriesReader()
+    dicom_input_names = reader.GetGDCMSeriesFileNames(path_input)
+    reader.SetFileNames(dicom_input_names)
+    image_input = reader.Execute()
+    # read template
+    dicom_template_names = reader.GetGDCMSeriesFileNames(path_template)
+    reader.SetFileNames(dicom_template_names)
+    image_template = reader.Execute()
+    # registration
+    parameterMap = sitk.GetDefaultParameterMap("affine")
+    elastixImageFilter = sitk.ElastixImageFilter()
+    elastixImageFilter.SetFixedImage(image_template)
+    elastixImageFilter.SetMovingImage(image_input)
+    elastixImageFilter.SetParameterMap(parameterMap)
+    elastixImageFilter.Execute()
+    # get output
+    image_output = elastixImageFilter.GetResultImage()
+    array_output = sitk.GetArrayFromImage(image_output)
+    # save output
+    tl.files.SaveDicom(path_template, array_output, path_output, scale_max, scale_min, tag_modality)
 
+    return array_output
 
 
 
