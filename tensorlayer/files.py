@@ -1223,6 +1223,36 @@ def LoadDicom(path, reverse_z = True):
     return image
 
 
+def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0, tag_modality = ''):
+
+    # read template name
+    reader = sitk.ImageSeriesReader()
+    dicom_template_names = reader.GetGDCMSeriesFileNames(path_template)
+
+    assert data.ndim == 3 and data.shape[0] == len(dicom_template_names)
+
+    for i, fname in enumerate(dicom_template_names):
+        dicom_file = dicom.read_file(fname)
+        M = np.max(data[i])
+        m = np.min(data[i])
+        if M == m:
+            slope = 0.0
+            intercept = 0.0
+        else:
+            slope = (scale_max - scale_min) / (M - m)
+            intercept = scale_max - M * slope
+        dicom_file.RescaleSlope = slope
+        dicom_file.RescaleIntercept = intercept
+        dicom_file.Modality = tag_modality
+        dicom_file.StudyDescription = tag_modality
+
+        dicom_file.pixel_array = data[i]
+        dicom_file.PixelData = data[i].astype(np.int16).tostring()
+
+        dicom_file.save_as(os.path.join(path_output, os.path.basename(fname)))
+
+
+'''
 
 def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_extension = '', 
               filename2key = lambda x: int(re.search(r'\d+', x.split('_sl')[-1]).group())):
@@ -1251,3 +1281,4 @@ def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_ex
             dicom_data.PixelData = slice_data.tostring()
         print('save to {}'.format(os.path.join(path_new, filename)))
         dicom_data.save_as(os.path.join(path_new, filename))
+'''
