@@ -18,6 +18,8 @@ from six.moves import cPickle
 from six.moves import zip
 from tensorflow.python.platform import gfile
 import dicom
+import SimpleITK as sitk
+
 
 
 ## Load dataset functions
@@ -1178,6 +1180,7 @@ def loadDataFromDicom(dir_or_list, key):
         return vals
 '''
 
+'''
 import re
 
 def LoadDicom(path, rescale = True, dicom_extension = '', spatial_info = False,
@@ -1207,6 +1210,19 @@ def LoadDicom(path, rescale = True, dicom_extension = '', spatial_info = False,
         return np.asarray(data), sp
 
     return np.asarray(data)
+'''
+
+def LoadDicom(path, reverse_z = True):
+    reader = sitk.ImageSeriesReader()
+    dicom_names = reader.GetGDCMSeriesFileNames(path)
+    reader.SetFileNames(dicom_names)
+    image = reader.Execute()
+    image = sitk.GetArrayFromImage(image)
+    if reverse_z:
+        image = np.flip(image, axis = 0)
+    return image
+
+
 
 def SaveDicom(path_old, path_new, data, begin_slice = 1,rescale = True, dicom_extension = '', 
               filename2key = lambda x: int(re.search(r'\d+', x.split('_sl')[-1]).group())):
