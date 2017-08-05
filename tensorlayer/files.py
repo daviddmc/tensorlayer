@@ -1212,16 +1212,16 @@ def LoadDicom(path, rescale = True, dicom_extension = '', spatial_info = False,
     return np.asarray(data)
 '''
 
-def LoadDicom(path, reverse_z = True):
+def LoadDicom(path):
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(path)
     reader.SetFileNames(dicom_names)
     image = reader.Execute()
     image = sitk.GetArrayFromImage(image)
-    if reverse_z:
-        image = np.flip(image, axis = 0)
     return image
 
+def LoadDicomDataSet():
+    pass
 
 def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0, tag_modality = ''):
 
@@ -1230,7 +1230,8 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
     dicom_template_names = reader.GetGDCMSeriesFileNames(path_template)
 
     assert data.ndim == 3 and data.shape[0] == len(dicom_template_names)
-
+    if not os.path.isdir(path_output):
+        os.makedirs(path_output)
     for i, fname in enumerate(dicom_template_names):
         dicom_file = dicom.read_file(fname)
         M = np.max(data[i])
@@ -1244,12 +1245,20 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
         dicom_file.RescaleSlope = slope
         dicom_file.RescaleIntercept = intercept
         dicom_file.Modality = tag_modality
-        dicom_file.StudyDescription = tag_modality
+        dicom_file.SeriesDescription = tag_modality
 
         dicom_file.pixel_array = data[i]
         dicom_file.PixelData = data[i].astype(np.int16).tostring()
 
         dicom_file.save_as(os.path.join(path_output, os.path.basename(fname)))
+
+def GetDicomTag(path, tag):
+    if os.path.isdir(path):
+        path = os.path.join(path, os.listdir(path)[0])
+    elif not os.path.isfile(path):
+        raise Exception('path dose not exist')
+
+    return dicom.read_file(path)[tag].value
 
 
 '''
