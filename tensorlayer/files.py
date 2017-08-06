@@ -1266,14 +1266,15 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
                 slope = 0.0
                 intercept = 0.0
             else:
-                slope = (scale_max - scale_min) / (M - m)
-                intercept = scale_max - M * slope
+                slope = (M - m) / (scale_max - scale_min)
+                intercept = M - scale_max * slope
             dicom_file.RescaleSlope = slope
             dicom_file.RescaleIntercept = intercept
             dicom_file.Modality = tag_modality
             dicom_file.SeriesDescription = tag_modality
-
-            dicom_file.pixel_array = data[i]
+            if slope != 0:
+                data[i] = (data[i] - intercept) / slope
+            #dicom_file.pixel_array = data[i]
             dicom_file.PixelData = data[i].astype(np.int16).tostring()
 
             dicom_file.save_as(os.path.join(path_output, 'I' + str(i+1).zfill(4) + '.dcm'))
@@ -1294,9 +1295,8 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
             dicom_file.RescaleIntercept = intercept
             dicom_file.Modality = tag_modality
             dicom_file.SeriesDescription = tag_modality
-
-            #dicom_file.pixel_array = data[i]
-            data[i] = (data[i] - intercept) / slope
+            if slope != 0:
+                data[i] = (data[i] - intercept) / slope
             dicom_file.PixelData = data[i].astype(np.int16).tostring()
 
             dicom_file.save_as(os.path.join(path_output, os.path.basename(fname)))
