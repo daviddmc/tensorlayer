@@ -1634,24 +1634,48 @@ def random_crop_image(image, crop_size, crop_num, seed=None):
     
 def DicomAffineRegister(path_input, path_template, path_output = None, scale_max = 0.0, scale_min = 0.0, tag_modality = ''):
     # read input
-    reader = sitk.ImageSeriesReader()
-    dicom_input_names = reader.GetGDCMSeriesFileNames(path_input)
-    reader.SetFileNames(dicom_input_names)
-    image_input = reader.Execute()
+    image_input = tl.files.load_dicom(path_input)
     # read template
-    dicom_template_names = reader.GetGDCMSeriesFileNames(path_template)
-    reader.SetFileNames(dicom_template_names)
-    image_template = reader.Execute()
+    image_template = tl.files.load_dicom(path_template)
     # registration
     parameterMap = sitk.GetDefaultParameterMap("affine")
     elastixImageFilter = sitk.ElastixImageFilter()
-    elastixImageFilter.SetFixedImage(image_template)
-    elastixImageFilter.SetMovingImage(image_input)
     elastixImageFilter.SetParameterMap(parameterMap)
-    elastixImageFilter.Execute()
-    # get output
-    image_output = elastixImageFilter.GetResultImage()
-    array_output = sitk.GetArrayFromImage(image_output)
+    if type(image_input) is list:
+        array_output = []
+        if type(image_template) is list:
+            assert len(image_input) == len(image_template)
+            for im_input, im_template in zip(image_input, image_template):
+                
+                
+                
+                elastixImageFilter.SetFixedImage(im_template)
+                elastixImageFilter.SetMovingImage(im_input)
+                elastixImageFilter.Execute()
+                image_output = elastixImageFilter.GetResultImage()
+                array_output.append(sitk.GetArrayFromImage(image_output))
+        else:
+            elastixImageFilter.SetFixedImage(image_template)
+            for im_input in image_input:
+                
+                
+                
+                elastixImageFilter.SetMovingImage(im_input)
+                
+                elastixImageFilter.Execute()
+                image_output = elastixImageFilter.GetResultImage()
+                array_output.append(sitk.GetArrayFromImage(image_output))
+            
+        array_output = np.concatenate(array_output, axis = 0)
+    else:
+        
+        
+        elastixImageFilter.SetMovingImage(image_input)
+        elastixImageFilter.SetFixedImage(image_template)
+        
+        elastixImageFilter.Execute()
+        image_output = elastixImageFilter.GetResultImage()
+        array_output = sitk.GetArrayFromImage(image_output)
     # save output
     tl.files.SaveDicom(path_template, array_output, path_output, scale_max, scale_min, tag_modality)
 

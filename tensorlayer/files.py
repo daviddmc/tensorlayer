@@ -1212,12 +1212,36 @@ def LoadDicom(path, rescale = True, dicom_extension = '', spatial_info = False,
     return np.asarray(data)
 '''
 
-def LoadDicom(path):
+def load_dicom(path):
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(path)
     reader.SetFileNames(dicom_names)
     image = reader.Execute()
-    image = sitk.GetArrayFromImage(image)
+
+    num_slice = 0
+    location = -1e10
+    for name in dicom_names:
+        l = GetDicomTag(name, (0x0020,0x1041))
+        if l > location:
+            location = l
+            num_slice += 1
+        else:
+            break
+    #orientation = GetDicomTag(dicom_names[0],(0x0020,0x0037))
+    if num_slice < image.GetSize()[-1]:
+        image = [image[:,:,(i * num_slice): ((i+1) * num_slice)] for i in range(image.GetSize()[-1] / num_slice)]
+        for im in image:
+            im.SetOrigin(image[0].GetOrigin())
+    
+    return image
+
+def LoadDicom(path):
+    image = load_dicom(path)
+    if type(image) is list:
+        image = [np.expand_dims(sitk.GetArrayFromImage(x), axis = 3) for x in image]
+        image = np.concatenate(image, axis = 3)
+    else:
+        image = sitk.GetArrayFromImage(image)
     return image
 
 def LoadDicomDataSet():
@@ -1229,28 +1253,53 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
     reader = sitk.ImageSeriesReader()
     dicom_template_names = reader.GetGDCMSeriesFileNames(path_template)
 
-    assert data.ndim == 3 and data.shape[0] == len(dicom_template_names)
+    assert data.ndim == 3 and data.shape[0] % len(dicom_template_names) == 0
     if not os.path.isdir(path_output):
         os.makedirs(path_output)
-    for i, fname in enumerate(dicom_template_names):
-        dicom_file = dicom.read_file(fname)
-        M = np.max(data[i])
-        m = np.min(data[i])
-        if M == m:
-            slope = 0.0
-            intercept = 0.0
-        else:
-            slope = (scale_max - scale_min) / (M - m)
-            intercept = scale_max - M * slope
-        dicom_file.RescaleSlope = slope
-        dicom_file.RescaleIntercept = intercept
-        dicom_file.Modality = tag_modality
-        dicom_file.SeriesDescription = tag_modality
 
-        dicom_file.pixel_array = data[i]
-        dicom_file.PixelData = data[i].astype(np.int16).tostring()
+    if data.shape[0] > len(dicom_template_names):
+        for i, fname in enumerate(dicom_template_names * (data.shape[0] / len(dicom_template_names))):
+            dicom_file = dicom.read_file(fname)
+            M = np.max(data[i])
+            m = np.min(data[i])
+            if M == m:
+                slope = 0.0
+                intercept = 0.0
+            else:
+                slope = (scale_max - scale_min) / (M - m)
+                intercept = scale_max - M * slope
+            dicom_file.RescaleSlope = slope
+            dicom_file.RescaleIntercept = intercept
+            dicom_file.Modality = tag_modality
+            dicom_file.SeriesDescription = tag_modality
 
-        dicom_file.save_as(os.path.join(path_output, os.path.basename(fname)))
+            dicom_file.pixel_array = data[i]
+            dicom_file.PixelData = data[i].astype(np.int16).tostring()
+
+            dicom_file.save_as(os.path.join(path_output, 'I' + str(i+1).zfill(4) + '.dcm'))
+    else:
+        for i, fname in enumerate(dicom_template_names):
+            dicom_file = dicom.read_file(fname)
+            M = np.max(data[i])
+            m = np.min(data[i])
+            if M == m:
+                slope = 0.0
+                intercept = 0.0
+            else:
+                slope = (M - m) / (scale_max - scale_min)
+                #slope = (scale_max - scale_min) / (M - m)
+                intercept = M - scale_max * slope
+                #intercept = scale_max - M * slope
+            dicom_file.RescaleSlope = slope
+            dicom_file.RescaleIntercept = intercept
+            dicom_file.Modality = tag_modality
+            dicom_file.SeriesDescription = tag_modality
+
+            #dicom_file.pixel_array = data[i]
+            data[i] = (data[i] - intercept) / slope
+            dicom_file.PixelData = data[i].astype(np.int16).tostring()
+
+            dicom_file.save_as(os.path.join(path_output, os.path.basename(fname)))
 
 def GetDicomTag(path, tag):
     if os.path.isdir(path):
