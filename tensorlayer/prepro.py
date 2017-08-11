@@ -1601,7 +1601,10 @@ def data_augment(images,
                 flip_left_right = True,
                 transpose = True,
                 crop_size = None,
-                crop_num = 1):
+                crop_num = 1,
+                crop_edge = 0):
+    if crop_edge:
+        images = images[:,crop_edge:-crop_edge,crop_edge:-crop_edge,:]
     if flip_up_down:
         images = tf.map_fn(lambda img: tf.image.random_flip_up_down(img), images)
     if flip_left_right:
