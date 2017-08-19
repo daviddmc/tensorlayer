@@ -7,7 +7,7 @@ from .layers import *
 from .activation import lrelu
 
 def unet(x, is_train = True, reuse = False, 
-         num_channel_out = 1, num_channel_first = 32, num_downsampling = 3,
+         num_channel_out = 1, num_downsampling = 3,
          use_bn = True, use_res = True, use_concat = True,
          method_down = 'mean', method_up = 'upsample',
          block_type = {'down':'dense', 'center':'dense', 'up':'dense'},
@@ -17,7 +17,7 @@ def unet(x, is_train = True, reuse = False,
          dense_depth = 3, dense_growth_rate = 12,
          # res block
          res_num = 1, res_channel_first = 16,
-         act = tf.tanh):
+         act_out = tf.tanh, act = tf.nn.relu, Name = 'unet'):
          
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
@@ -35,56 +35,72 @@ def unet(x, is_train = True, reuse = False,
     use_bn : use batch normalization
     use_dc : use deconvolution to upsample the image, otherwise use image resize
     act : activation of the output layer usually sigmoid for image output and tanh for residual output"""
-       
-    down = lambda x, oc, name: DownSampling2D(x, scale = 2, out_channel = oc, method = method_down, 
-                                              act = tf.nn.relu, bn = use_bn, is_train = is_train, 
-                                              BAC = True, name = name) 
     
-    up = lambda x, oc, name: UpSampling2D(x, scale = 2, out_channel = oc, method = method_up, 
-                                          act = tf.nn.relu, bn = use_bn, is_train = is_train, 
-                                          BAC = True, name = name)
- 
+    if block_type == 'dense':
+        block_type = {'down':'dense', 'center':'dense', 'up':'dense'}
+    elif block_type == 'res':
+        block_type = {'down':'res', 'center':'res', 'up':'res'}
+    elif block_type == 'conv':
+        block_type = {'down':'conv', 'center':'conv', 'up':'conv'}
+    else:
+        raise Exception('block type error')
+
+
+    down = lambda x, oc, bac, name: DownSampling2D(x, scale = 2, out_channel = oc, method = method_down, 
+                                              act = act, bn = use_bn, is_train = is_train, 
+                                              BAC = bac, name = name) 
+    
+    up = lambda x, oc, bac, name: UpSampling2D(x, scale = 2, out_channel = oc, method = method_up, 
+                                          act = act, bn = use_bn, is_train = is_train, 
+                                          BAC = bac, name = name)
+    
+    bac = {'dense':True, 'conv':False, 'res':False}
+
     block = {}
     out_channel = {}
     for key in ['center','down','up']:
         if block_type[key] == 'dense':
-            block[key] = lambda x, i : dense_block(x, dense_depth, dense_growth_rate, tf.nn.relu,
+            block[key] = lambda x, i : dense_block(x, dense_depth, dense_growth_rate, act,
                                                    use_bn, is_train, 'dense_block{}'.format(i))
-            out_channel[key] = lambda x: x.outputs.get_shape().as_list()[-1] // 2
+            out_channel[key] = lambda x, i: x.outputs.get_shape().as_list()[-1] // 2
         elif block_type[key] == 'res':
-            block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, tf.nn.relu,
+            block[key] = lambda x, i : residual_block(x, res_num, 2**(abs(i)-1) * res_channel_first, act,
                                                      use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda x: None
+            #out_channel[key] = lambda x, i: 2**(abs(i)-1) * res_channel_first
+            out_channel[key] = lambda x, i: None
         elif block_type[key] == 'conv':
-            block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, tf.nn.relu,
-                                                  use_bn, is_train, 'res_block{}'.format(i))
-            out_channel[key] = lambda x: None
-            
-    with tf.variable_scope("unet", reuse=reuse):
+            block[key] = lambda x, i : conv_block(x, conv_depth, 2**(abs(i)-1) * conv_channel_first, act,
+                                                  use_bn, is_train, 'conv_block{}'.format(i))
+            out_channel[key] = lambda x, i: None
+            #out_channel[key] = lambda x, i: 2**(abs(i)-1) * conv_channel_first
+    
+    #if block_type['up'] != 'dense':
+    #    out_channel['up'] = lambda x, i: None
+
+    with tf.variable_scope(Name, reuse=reuse):
         set_name_reuse(reuse)
         
         # input
         inputs = InputLayer(x, name = 'input')
         encoder = inputs
-         
         # encode
         encoders = []
         for i in xrange(1, num_downsampling+1):
             encoder = block['down'](encoder, i)
             encoders.append(encoder)
-            encoder = down(encoder, out_channel['down'](encoder), 'down{}'.format(i))
+            encoder = down(encoder, out_channel['down'](encoder, i+1), bac[block_type['down']], 'down{}'.format(i))
             
         # center connection
         decoder = block['center'](encoder, (num_downsampling+1))
          
         # decode
         for i in xrange(num_downsampling, 0, -1):
-            decoder = up(decoder, out_channel['up'](encoder), 'up{}'.format(i))
+            decoder = up(decoder, out_channel['up'](encoder, -i), bac[block_type['up']], 'up{}'.format(i))
             decoder = ConcatLayer([decoder, encoders[i-1]], 3, name = 'concat{}'.format(i))
             decoder = block['up'](decoder, -i)
          
         # output layer
-        outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act, name='output')
+        outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act_out, name='output')
         
         # residual learnning
         if use_res:
@@ -199,26 +215,26 @@ def SRGAN_d(input_images, is_train=True, reuse=False):
         tl.layers.set_name_reuse(reuse)
         
         net_in = InputLayer(input_images, name='input/images')
-        net_h0 = Conv2d(net_in, df_dim, (4, 4), (2, 2), act=lrelu,
+        net_h0 = Conv2d(net_in, df_dim, (3, 3), (2, 2), act=lrelu,
                 padding='SAME', W_init=w_init, name='h0/c')
 
-        net_h1 = Conv2d(net_h0, df_dim*2, (4, 4), (2, 2), act=None,
+        net_h1 = Conv2d(net_h0, df_dim*2, (3, 3), (2, 2), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='h1/c')
         net_h1 = BatchNormLayer(net_h1, act=lrelu, is_train=is_train,
                 gamma_init=gamma_init, name='h1/bn')
-        net_h2 = Conv2d(net_h1, df_dim*4, (4, 4), (2, 2), act=None,
+        net_h2 = Conv2d(net_h1, df_dim*4, (3, 3), (2, 2), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='h2/c')
         net_h2 = BatchNormLayer(net_h2, act=lrelu, is_train=is_train,
                 gamma_init=gamma_init, name='h2/bn')
-        net_h3 = Conv2d(net_h2, df_dim*8, (4, 4), (2, 2), act=None,
+        net_h3 = Conv2d(net_h2, df_dim*8, (3, 3), (2, 2), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='h3/c')
         net_h3 = BatchNormLayer(net_h3, act=lrelu, is_train=is_train,
                 gamma_init=gamma_init, name='h3/bn')
-        net_h4 = Conv2d(net_h3, df_dim*16, (4, 4), (2, 2), act=None,
+        net_h4 = Conv2d(net_h3, df_dim*16, (3, 3), (2, 2), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='h4/c')
         net_h4 = BatchNormLayer(net_h4, act=lrelu, is_train=is_train,
                 gamma_init=gamma_init, name='h4/bn')
-        net_h5 = Conv2d(net_h4, df_dim*32, (4, 4), (2, 2), act=None,
+        net_h5 = Conv2d(net_h4, df_dim*32, (3, 3), (2, 2), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='h5/c')
         net_h5 = BatchNormLayer(net_h5, act=lrelu, is_train=is_train,
                 gamma_init=gamma_init, name='h5/bn')
@@ -230,7 +246,6 @@ def SRGAN_d(input_images, is_train=True, reuse=False):
                 padding='SAME', W_init=w_init, b_init=b_init, name='h7/c')
         net_h7 = BatchNormLayer(net_h7, is_train=is_train,
                 gamma_init=gamma_init, name='h7/bn')
-
         net = Conv2d(net_h7, df_dim*2, (1, 1), (1, 1), act=None,
                 padding='SAME', W_init=w_init, b_init=b_init, name='res/c')
         net = BatchNormLayer(net, act=lrelu, is_train=is_train,
@@ -253,7 +268,6 @@ def SRGAN_d(input_images, is_train=True, reuse=False):
         logits = net_ho.outputs
         net_ho.outputs = tf.nn.sigmoid(net_ho.outputs)
         
-        
     return net_ho, logits
 
 def unet_old(x, is_train = True, reuse = False, 
@@ -261,7 +275,7 @@ def unet_old(x, is_train = True, reuse = False,
          num_conv_per_pooling = 2, num_poolings = 3, 
          use_bn = False, use_dc = False, use_res = True,use_concat = True, den_con = False, in_res = False,
          use_selu = False,
-         act = tf.tanh):
+         act = tf.tanh, Name = 'unet'):
     """U-Net for image denoising and super resolution. A multi-scale encoder-decoder network with symmetric concatenate connection.
     The input images and output images must have the same size. Therefore, when this network is used in super resolution the input
     image must be upsampled first.
@@ -297,7 +311,7 @@ def unet_old(x, is_train = True, reuse = False,
     else:
         up = lambda x, out_channel, name : UpSampling2dLayer(x, (2, 2), name = name)
     
-    with tf.variable_scope("unet", reuse=reuse):
+    with tf.variable_scope(Name, reuse=reuse):
         set_name_reuse(reuse)
         
         # input
@@ -318,10 +332,12 @@ def unet_old(x, is_train = True, reuse = False,
                 conv_encoder = Conv2d(conv_encoder, num_channel, (3, 3), act=conv_act, name='conv{0}_{1}'.format(i+1, j+1))
                 conv_encoder = bn(conv_encoder, name = 'bn{0}_{1}'.format(i+1, j+1))
             if in_res:
-                paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
-                conv_encoder = ElementwiseLayer([conv_encoder,
-                                                 PadLayer(pools[-1], paddings = paddings, name = 'slice_en{}'.format(i+1))], 
-                                                tf.add, name='residual_en{}'.format(i+1))
+                shortcut = Conv2d(pools[-1], num_channel, (1, 1), act=conv_act, name='shortcut{}'.format(i+1))
+                conv_encoder = ElementwiseLayer([conv_encoder, shortcut], tf.add, name='residual_in{}'.format(i+1))
+                #paddings = [[0,0],[0,0],[0,0],[0,conv_encoder.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+                #conv_encoder = ElementwiseLayer([conv_encoder,
+                #                                 PadLayer(pools[-1], paddings = paddings, name = 'slice_en{}'.format(i+1))], 
+                #                                tf.add, name='residual_en{}'.format(i+1))
             pool_encoder = MaxPool2d(conv_encoder, (2, 2), name = 'pool{0}'.format(i+1))
             pools.append(pool_encoder)
             convs.append(conv_encoder)
@@ -330,10 +346,12 @@ def unet_old(x, is_train = True, reuse = False,
         # center connection
         conv_center = Conv2d(pools[-1], list_num_features[-1] * 2, (3, 3), act=tf.nn.relu, name = 'conv_center')
         if in_res:
-            paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
-            conv_center = ElementwiseLayer([conv_center,
-                                            PadLayer(pools[-1], paddings = paddings, name = 'slice_cen')],
-                                           tf.add, name='residual_cen')
+            shortcut = Conv2d(pools[-1], list_num_features[-1] * 2, (1, 1), act=conv_act, name='shortcut_center')
+            conv_center = ElementwiseLayer([conv_center, shortcut], tf.add, name='residual_cen')
+            #paddings = [[0,0],[0,0],[0,0],[0,conv_center.outputs.get_shape().as_list()[-1] - pools[-1].outputs.get_shape().as_list()[-1]]]
+            #conv_center = ElementwiseLayer([conv_center,
+            #                                PadLayer(pools[-1], paddings = paddings, name = 'slice_cen')],
+            #                               tf.add, name='residual_cen')
         conv_decoders = [conv_center]
 
         # decode
@@ -463,3 +481,21 @@ def Vgg19_simple_api(rgb, reuse):
         network = DenseLayer(network, n_units=1000, act=tf.identity, name='fc8')
         print("build model finished: %fs" % (time.time() - start_time))
     return network, conv
+
+def patchGAN_d(x, is_train = True, reuse = False, ndf=64, n_layers=3, Name = 'patchGAN_d'):
+
+    with tf.variable_scope(Name, reuse=reuse):
+        set_name_reuse(reuse)
+        inputs = InputLayer(x, name = 'input')
+        gamma_init = tf.random_normal_initializer(1., 0.02)
+        conv = inputs
+        for i in range(n_layers):
+            conv = Conv2d(conv, min(2**i,8) * ndf, (4, 4), (2, 2), name='conv{0}'.format(i+1))
+            conv = BatchNormLayer(conv, act = lambda y: lrelu(y, 0.2), is_train = is_train, gamma_init = gamma_init, name = 'bn{}'.format(i+1))
+        conv = Conv2d(conv, min(2**n_layers,8) * ndf, (4, 4), (1, 1), name='conv{0}'.format(n_layers+1))
+        conv = BatchNormLayer(conv, act = lambda y: lrelu(y, 0.2), is_train = is_train, gamma_init = gamma_init, name = 'bn{}'.format(n_layers+1))
+        outputs = Conv2d(conv, 1, (4, 4), (1, 1), name='output')
+
+    return outputs
+
+    

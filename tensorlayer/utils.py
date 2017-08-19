@@ -610,8 +610,9 @@ def fit_gan(sess, G, D, train_G, train_D,
             print("    " + ' '.join("{} : {}".format(k,loss_dict[k][-1]) for k in d_loss_keys))
         
         if (epoch + 1) % eval_freq == 0:
-            print("evaluation")
-            eval_fn(X_val, y_val, epoch+1)
+            if X_val is not None:
+                print("evaluation")
+                eval_fn(X_val, y_val, epoch+1)
         
         if (epoch + 1) % save_freq == 0:   
             if save_path is not None:
@@ -620,6 +621,11 @@ def fit_gan(sess, G, D, train_G, train_D,
     
     if save_path is not None:
         np.savez(os.path.join(save_path, 'loss.npz'), **loss_dict)
+
+
+    
+
+
 
     print("Total training time: %fs" % (time.time() - start_time_begin))
 
