@@ -18,6 +18,7 @@ from six.moves import cPickle
 from six.moves import zip
 from tensorflow.python.platform import gfile
 import dicom
+import random
 import SimpleITK as sitk
 
 
@@ -1247,7 +1248,7 @@ def LoadDicom(path):
 def LoadDicomDataSet():
     pass
 
-def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0, tag_modality = ''):
+def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0, tag_modality = None, Slope = None, Intercept = None, new_series_uid=False):
 
     # read template name
     reader = sitk.ImageSeriesReader()
@@ -1256,6 +1257,8 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
     assert data.ndim == 3 and data.shape[0] % len(dicom_template_names) == 0
     if not os.path.isdir(path_output):
         os.makedirs(path_output)
+
+    new_uid = dicom.UID.generate_uid()
 
     if data.shape[0] > len(dicom_template_names):
         for i, fname in enumerate(dicom_template_names * (data.shape[0] / len(dicom_template_names))):
@@ -1268,10 +1271,18 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
             else:
                 slope = (M - m) / (scale_max - scale_min)
                 intercept = M - scale_max * slope
+            if Slope is not None:
+                slope = Slope
+            if Intercept is not None:
+                intercept = Intercept
             dicom_file.RescaleSlope = slope
             dicom_file.RescaleIntercept = intercept
-            dicom_file.Modality = tag_modality
-            dicom_file.SeriesDescription = tag_modality
+            #dicom_file.Modality = tag_modality
+            if tag_modality is not None:
+                dicom_file.SeriesDescription = tag_modality
+            if new_series_uid:
+                dicom_file[(0x0020,0x000e)].value = new_uid
+
             if slope != 0:
                 data[i] = (data[i] - intercept) / slope
             dicom_file.PixelData = data[i].astype(np.int16).tostring()
@@ -1290,8 +1301,11 @@ def SaveDicom(path_template, data, path_output, scale_max = 0.0, scale_min = 0.0
                 intercept = M - scale_max * slope
             dicom_file.RescaleSlope = slope
             dicom_file.RescaleIntercept = intercept
-            dicom_file.Modality = tag_modality
-            dicom_file.SeriesDescription = tag_modality
+            #dicom_file.Modality = tag_modality
+            if tag_modality is not None:
+                dicom_file.SeriesDescription = tag_modality
+            if new_series_uid:
+                dicom_file[(0x0020,0x000e)].value = new_uid
             if slope != 0:
                 data[i] = (data[i] - intercept) / slope
             dicom_file.PixelData = data[i].astype(np.int16).tostring()

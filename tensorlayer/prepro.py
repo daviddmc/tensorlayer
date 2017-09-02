@@ -1650,8 +1650,6 @@ def DicomAffineRegister(path_input, path_template, path_output = None, scale_max
             assert len(image_input) == len(image_template)
             for im_input, im_template in zip(image_input, image_template):
                 
-                
-                
                 elastixImageFilter.SetFixedImage(im_template)
                 elastixImageFilter.SetMovingImage(im_input)
                 elastixImageFilter.Execute()
@@ -1660,8 +1658,6 @@ def DicomAffineRegister(path_input, path_template, path_output = None, scale_max
         else:
             elastixImageFilter.SetFixedImage(image_template)
             for im_input in image_input:
-                
-                
                 
                 elastixImageFilter.SetMovingImage(im_input)
                 
@@ -1680,7 +1676,7 @@ def DicomAffineRegister(path_input, path_template, path_output = None, scale_max
         image_output = elastixImageFilter.GetResultImage()
         array_output = sitk.GetArrayFromImage(image_output)
     # save output
-    tl.files.SaveDicom(path_template, array_output, path_output, scale_max, scale_min, tag_modality)
+    tl.files.SaveDicom(path_template, array_output, path_output, scale_max, scale_min, tag_modality, new_series_uid=True)
 
     return array_output
 

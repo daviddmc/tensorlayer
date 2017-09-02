@@ -6020,7 +6020,10 @@ class ActivationLayer(Layer):
 
 def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'resblock'):
     if bn:
-        BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
+        if bn == 'instance':
+            BN = lambda x, name: InstanceNormLayer(x, name)
+        else:
+            BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
 					    name = name)
         Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
@@ -6052,11 +6055,14 @@ def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, 
 
 def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'denseblock'):
     if bn:
-	BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
+        if bn == 'instance':
+            BN = lambda x, name: InstanceNormLayer(x, name)
+        else:
+            BN = lambda x, name: BatchNormLayer(x, is_train = is_train,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
 					    name = name)
     else:
-	BN = lambda x, name: x
+        BN = lambda x, name: x
     Act = lambda x, name: ActivationLayer(x, act = act, name = name)
     
     with tf.variable_scope(name):
@@ -6076,12 +6082,15 @@ def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_trai
 
 def conv_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'convblock'):
     if bn:
-	BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
+        if bn == 'instance':
+            BN = lambda x, name: InstanceNormLayer(x, name)
+        else:
+            BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
 					    name = name)
-	Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
+        Conv = lambda x, name: Conv2d(x, out_channel, (3,3), name = name)
     else:
-	BN = lambda x, name: x
+        BN = lambda x, name: x
         Conv = lambda x, name: Conv2d(x, out_channel, (3,3), act = act, name = name)
     
     conv = inputs
@@ -6092,81 +6101,85 @@ def conv_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train
 
     return conv
 
+
 def DownSampling2D(inputs, scale = 2, out_channel = None, method = 'max', 
-		   act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'down'):
+    act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'down'):
     if bn:
-        BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
-					    gamma_init = tf.random_normal_initializer(1., 0.02),
-					    name = name)
+        if bn == 'instance':
+            BN = lambda x, name: InstanceNormLayer(x, name)
+        else:
+            BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
+    					    gamma_init = tf.random_normal_initializer(1., 0.02),
+    					    name = name)
     else:
-	BN = lambda x, name: x
+        BN = lambda x, name: x
     Act = lambda x, name: ActivationLayer(x, act = act, name = name)    
 
     with tf.variable_scope(name):
-            if method == 'mean':
-                outputs = MeanPool2d(inputs, (scale, scale), name = 'meanpool')
-		if out_channel is not None:
-		    if not BAC:
-		        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
-                    outputs = BN(outputs, 'bn')
-                    outputs = Act(outputs, 'act')
-		    if BAC:
-                        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
-            elif method == 'max':
-                outputs = MaxPool2d(inputs, (scale, scale), name = 'maxpool')
-                if out_channel is not None:
-		    if not BAC:
-		        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
-                    outputs = BN(outputs, 'bn')
-                    outputs = Act(outputs, 'act')
-		    if BAC:
-                        outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
-            elif method == 'conv':
-		if out_channel is None:
-		    out_channel = inputs.outputs.get_shape().as_list()[-1]
-		if not BAC:
-		    inputs = Conv2d(inputs, out_channel, 
-				     (2*scale-1, 2*scale-1), (scale, scale), name='conv')
-                outputs = BN(inputs, 'bn')
+        if method == 'mean':
+            outputs = MeanPool2d(inputs, (scale, scale), name = 'meanpool')
+            if out_channel is not None:
+                if not BAC:
+                    outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+                outputs = BN(outputs, 'bn')
                 outputs = Act(outputs, 'act')
-		if BAC:
-                    outputs = Conv2d(outputs, out_channel, 
-				     (2*scale-1, 2*scale-1), (scale, scale), name='conv')
-            else:
-                raise Exception('method error')
+                if BAC:
+                    outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+        elif method == 'max':
+            outputs = MaxPool2d(inputs, (scale, scale), name = 'maxpool')
+            if out_channel is not None:
+                if not BAC:
+                    outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+                outputs = BN(outputs, 'bn')
+                outputs = Act(outputs, 'act')
+                if BAC:
+                    outputs = Conv2d(outputs, out_channel, (1, 1), name='conv')
+        elif method == 'conv':
+            if out_channel is None:
+                out_channel = inputs.outputs.get_shape().as_list()[-1]
+            if not BAC:
+                inputs = Conv2d(inputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name='conv')
+            outputs = BN(inputs, 'bn')
+            outputs = Act(outputs, 'act')
+            if BAC:
+                outputs = Conv2d(outputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name='conv')
+        else:
+            raise Exception('method error')
     return outputs
 
 def UpSampling2D(inputs, scale = 2, out_channel = None, method = 'upsample', 
 		 act = tf.nn.relu, bn = True, is_train = True, BAC = True, name = 'up'):
     if bn:
-        BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
+        if bn == 'instance':
+            BN = lambda x, name: InstanceNormLayer(x, name)
+        else:
+            BN = lambda x, name: BatchNormLayer(x, is_train = is_train, act = act,
 					    gamma_init = tf.random_normal_initializer(1., 0.02),
 					    name = name)
     else:
-	BN = lambda x, name: x
+        BN = lambda x, name: x
     Act = lambda x, name: ActivationLayer(x, act = act, name = name)
-
     with tf.variable_scope(name):
-            if method == 'deconv':
-		if out_channel is None:
-		    out_channel = inputs.outputs.get_shape().as_list()[-1]
-		if not BAC:
-		    inputs = myDeConv2d(inputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
-                outputs = BN(inputs, 'bn')
-                outputs = Act(outputs, 'act')
-		if BAC:
-                    outputs = myDeConv2d(outputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
-            elif method == 'upsample':
-		if out_channel is not None:
-		    if not BAC:
-		        inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
-                    inputs = BN(inputs, 'bn')
-                    inputs = Act(inputs, 'act')
-		    if BAC:
-                        inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
-                outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
-            else:
-                raise Exception('method error')
+        if method == 'deconv':
+            if out_channel is None:
+                out_channel = inputs.outputs.get_shape().as_list()[-1]
+            if not BAC:
+                inputs = myDeConv2d(inputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
+            outputs = BN(inputs, 'bn')
+            outputs = Act(outputs, 'act')
+            if BAC:
+                outputs = myDeConv2d(outputs, out_channel, (2*scale-1, 2*scale-1), (scale, scale), name = 'deconv')
+        elif method == 'upsample':
+            if out_channel is not None:
+                if not BAC:
+                    inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
+                inputs = BN(inputs, 'bn')
+                inputs = Act(inputs, 'act')
+                if BAC:
+                    inputs = Conv2d(inputs, out_channel, (1,1), name='conv')
+            outputs = UpSampling2dLayer(inputs, (2, 2), name = 'upsample')
+        else:
+            raise Exception('method error')
     return outputs
 
 '''
@@ -6185,14 +6198,51 @@ def glorot_initializer_conv2d(prev_units, num_units, mapsize, stddev_factor):
 
 
 
+def _instance_norm(input):
+  """ Instance Normalization
+  """
+  with tf.variable_scope("instance_norm"):
+    depth = input.get_shape()[3]
+    scale = _weights("scale", [depth], mean=1.0)
+    offset = _biases("offset", [depth])
+    mean, variance = tf.nn.moments(input, axes=[1,2], keep_dims=True)
+    epsilon = 1e-5
+    inv = tf.rsqrt(variance + epsilon)
+    normalized = (input-mean)*inv
+    return scale*normalized + offset
 
 
+class InstanceNormLayer(Layer):
+    def __init__(
+        self,
+        layer = None,
+        name ='instance_norm_layer',
+    ):
+        # check layer name (fixed)
+        Layer.__init__(self, name=name)
 
+        # the input of this layer is the output of previous layer (fixed)
+        self.inputs = layer.outputs
+        print("  [TL] InstanceNormLayer %s" % (self.name))
+        with tf.variable_scope(name) as vs:
+            depth = self.inputs.get_shape()[3]
+            #scale = _weights("scale", [depth], mean=1.0)
+            scale = tf.get_variable(name='scale', shape=[depth], initializer=tf.random_normal_initializer(mean=1.0, stddev=0.02, dtype=tf.float32))
+            offset = tf.get_variable(name = 'offset', shape = [depth], initializer=tf.constant_initializer(0.0))
+            #offset = _biases("offset", [depth])
+            mean, variance = tf.nn.moments(self.inputs, axes=[1,2], keep_dims=True)
+            epsilon = 1e-5
+            inv = tf.rsqrt(variance + epsilon)
+            normalized = (self.inputs-mean)*inv
+            self.outputs = scale * normalized + offset
 
-
-
-
-
+        # get stuff from previous layer (fixed)
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+        self.all_params.extend([scale, offset])
+        # update layer (customized)
+        self.all_layers.extend( [self.outputs] )
 
 
 
