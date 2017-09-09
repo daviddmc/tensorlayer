@@ -6018,7 +6018,7 @@ class ActivationLayer(Layer):
         # update layer (customized)
         self.all_layers.extend( [self.outputs] )       
 
-def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'resblock'):
+def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, is_train = True, BAC = False, name = 'resblock'):
     if bn:
         if bn == 'instance':
             BN = lambda x, name: InstanceNormLayer(x, name)
@@ -6035,23 +6035,36 @@ def residual_block(inputs, num_block, out_channel, act = tf.nn.relu, bn = True, 
     	with tf.variable_scope(name + '_{}'.format(i)):
             in_channel = inputs.outputs.get_shape().as_list()[-1]
 
-            conv = Conv(inputs, 'conv1')
-            conv = BN(conv, 'bn1')
-            conv = Act(conv, 'act1')
+            if BAC:
+                inputs = BN(inputs, 'bn1')
+                inputs = Act(inputs, 'act1')
+                conv = Conv(inputs, 'conv1')
 
-            conv = Conv(conv, 'conv2')
-            conv = BN(conv, 'bn2')
+                conv = BN(conv, 'bn2')
+                conv = Act(conv, 'act2')
+                conv = Conv(conv, 'conv2')
+            else:
+                conv = Conv(inputs, 'conv1')
+                conv = BN(conv, 'bn1')
+                conv = Act(conv, 'act1')
+
+                conv = Conv(conv, 'conv2')
+                conv = BN(conv, 'bn2')
 
             if in_channel != out_channel:
                 print('use conv')
                 shortcut = Conv(inputs, 'conv_shortcut')
-                shortcut = BN(shortcut, 'bn_shortcut')
+                if not BAC:
+                    shortcut = BN(shortcut, 'bn_shortcut')
             else:
                 shortcut = inputs
 
-            inputs = Act(ElementwiseLayer([conv, shortcut], tf.add, 'residual_connection'), 'act2')
+            outputs = ElementwiseLayer([conv, shortcut], tf.add, 'residual_connection')
+
+            if not BAC:
+                outputs = Act(outputs, 'act2')
 		
-    return inputs
+    return outputs
 
 def dense_block(inputs, depth, out_channel, act = tf.nn.relu, bn = True, is_train = True, name = 'denseblock'):
     if bn:

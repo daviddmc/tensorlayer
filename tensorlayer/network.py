@@ -498,4 +498,68 @@ def patchGAN_d(x, is_train = True, reuse = False, ndf=64, n_layers=3, Name = 'pa
 
     return outputs
 
-    
+def refinenet(x, is_train = True, reuse = False, 
+         num_channel_out = 1, num_downsampling = 3, use_res = True, res_channel_first = 16,
+         act_out = tf.tanh, Name = 'refinenet'):
+
+    def refine_block(xs, num_channel, name = 'refine_block'):
+
+        def chained_res_pool(x, num_channel, pool_stride = 5, conv_stride = 3, num_stage = 2, name = 'CRP'):
+            with tf.variable_scope(name):
+                y = ActivationLayer(x, act = tf.nn.relu, name = 'relu')
+                outputs = y
+                for i in range(num_stage):
+                    y = MeanPool2d(y, filter_size=(pool_stride, pool_stride), strides=(1, 1), padding='SAME', name='maxpool{}'.format(i+1))
+                    y = Conv2d(y, num_channel, (conv_stride, conv_stride), act=tf.identity, name='conv{}'.format(i+1))
+                    outputs = ElementwiseLayer(layer=[outputs, y], combine_fn=tf.add, name='add{}'.format(i+1))
+            return outputs
+
+        def multiresolution_fusion(xs, num_channel, name='MRF'):
+            with tf.variable_scope(name):
+                for i, x in enumerate(xs):
+                    y = Conv2d(x, num_channel, (3, 3), act=tf.identity, name='conv{}'.format(i+1))
+                    if i == 0:
+                        outputs = y
+                    else:
+                        y = UpSampling2dLayer(y, (2**i, 2**i), name = 'upsample{}'.format(i+1))
+                        outputs = ElementwiseLayer(layer=[outputs, y], combine_fn=tf.add, name='add{}'.format(i+1))
+            return outputs
+
+        with tf.variable_scope(name):
+            ys = [residual_block(x, 1, num_channel, is_train = is_train, BAC = True, name = 'res_block{}'.format(i+1)) for i, x in enumerate(xs)]
+            y = multiresolution_fusion(ys, num_channel)
+            y = chained_res_pool(y, num_channel)
+            y = residual_block(y, 1, num_channel, is_train = is_train, BAC = True, name = 'output')
+        return y
+            
+
+    with tf.variable_scope(Name, reuse=reuse):
+        set_name_reuse(reuse)
+        
+        # input
+        inputs = InputLayer(x, name = 'input')
+        encoder = inputs
+        # encode
+        encoders = []
+        encoder = residual_block(encoder, 1, res_channel_first, is_train = is_train, BAC = True, name = 'res_block{}'.format(1))
+        encoders.append(encoder)
+        for i in xrange(1, num_downsampling+1):
+            encoder = MeanPool2d(encoder, (2, 2), name = 'down{}'.format(i))
+            encoder = residual_block(encoder, 1, 2**i * res_channel_first, is_train = is_train, BAC = True, name = 'res_block{}'.format(i+1))
+            encoders.append(encoder)
+        
+        # decode (refine)
+        for i in xrange(num_downsampling + 1, 0, -1):
+            if i == num_downsampling + 1:
+                decoder = refine_block([encoders[i-1]], 2**(i-1) * res_channel_first, name = 'refine_block{}'.format(i))
+            else:
+                decoder = refine_block([encoders[i-1], decoder], 2**(i-1) * res_channel_first, name = 'refine_block{}'.format(i))
+         
+        # output layer
+        outputs = Conv2d(decoder, num_channel_out, (1, 1), act=act_out, name='output')
+        
+        # residual learnning
+        if use_res:
+            outputs = ResLayer(outputs, inputs, name = 'res_output')
+                  
+    return outputs
